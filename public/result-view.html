@@ -198,7 +198,9 @@
       const correctAnswers = raw.correctAnswers !== undefined ? raw.correctAnswers : (att.correctAnswers !== undefined ? att.correctAnswers : Math.round((percentage / 100) * totalQ));
       const wrongAnswers = raw.wrongAnswers !== undefined ? raw.wrongAnswers : (att.wrongAnswers !== undefined ? att.wrongAnswers : Math.max(0, totalQ - correctAnswers));
       const unansweredQuestions = raw.unansweredQuestions !== undefined ? raw.unansweredQuestions : (att.unansweredQuestions !== undefined ? att.unansweredQuestions : 0);
-      const timeTaken = raw.timeTakenSeconds || att.timeTakenSeconds || 120;
+      const timeTaken = (raw.timeTakenSeconds !== undefined && raw.timeTakenSeconds !== null) 
+        ? raw.timeTakenSeconds 
+        : ((att.timeTakenSeconds !== undefined && att.timeTakenSeconds !== null) ? att.timeTakenSeconds : 10);
       const reviews = raw.reviews || att.reviews || [];
 
       document.getElementById('result-content').classList.remove('d-none');
@@ -214,12 +216,12 @@
         title.innerText = 'Congratulations, You Passed!';
       } else {
         card.className = 'card-custom result-header-card result-fail mb-4';
-        icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger fs-1"></i>';
-        title.innerText = 'Test Incomplete - Retake Recommended';
+        icon.innerHTML = '<i class="bi bi-arrow-repeat text-danger fs-1"></i>';
+        title.innerText = 'Quiz Completed - Needs Improvement';
       }
 
-      document.getElementById('result-meta-text').innerText = 
-        `Student: ${escapeHtml(studentName)} • Quiz: ${escapeHtml(quizTitle)}`;
+      document.getElementById('result-meta-text').innerHTML = 
+        `Student: <strong>${escapeHtml(studentName)}</strong> • Quiz: <strong>${escapeHtml(quizTitle)}</strong> • Required to Pass: <strong>50%</strong>`;
       document.getElementById('result-percentage-display').innerText = `${percentage.toFixed(1)}%`;
       document.getElementById('result-score-marks').innerText = `${score} / ${totalMarks}`;
       document.getElementById('btn-retake').href = `quiz-view.html?id=${quizId}`;
@@ -229,9 +231,13 @@
       document.getElementById('res-wrong-count').innerText = wrongAnswers;
       document.getElementById('res-unanswered-count').innerText = unansweredQuestions;
 
-      const mins = Math.floor(timeTaken / 60);
-      const secs = timeTaken % 60;
-      document.getElementById('res-time-taken').innerText = `${mins}m ${secs}s`;
+      if (timeTaken < 60) {
+        document.getElementById('res-time-taken').innerText = `${timeTaken}s`;
+      } else {
+        const mins = Math.floor(timeTaken / 60);
+        const secs = timeTaken % 60;
+        document.getElementById('res-time-taken').innerText = `${mins}m ${secs}s`;
+      }
 
       // Chart
       renderChart(correctAnswers, wrongAnswers, unansweredQuestions);

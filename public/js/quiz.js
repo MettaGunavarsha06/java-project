@@ -10,6 +10,7 @@ let currentIndex = 0;
 let answersMap = {}; // questionId -> "A" | "B" | "C" | "D"
 let timerInterval = null;
 let remainingSeconds = 0;
+let quizStartTime = Date.now();
 let isSubmitting = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -86,6 +87,7 @@ async function initializeQuiz(quizId) {
   showQuestion(0);
 
   // Start timer countdown
+  quizStartTime = Date.now();
   startTimer();
 }
 
@@ -325,12 +327,18 @@ async function confirmSubmit() {
 
   showToast('Evaluating your answers...', 'info');
 
+  const elapsedSeconds = Math.max(1, Math.round((Date.now() - quizStartTime) / 1000));
+
   const res = await apiRequest(`/student/quiz/${currentQuiz.id}/submit`, {
     method: 'POST',
-    body: JSON.stringify({ answers: answersMap })
+    body: JSON.stringify({ 
+      answers: answersMap,
+      timeTakenSeconds: elapsedSeconds
+    })
   });
 
   if (res.success && res.data) {
+    res.data.timeTakenSeconds = res.data.timeTakenSeconds || elapsedSeconds;
     const attemptId = res.data.attemptId || res.data.id || Date.now();
     try {
       localStorage.setItem(`result_${attemptId}`, JSON.stringify(res.data));

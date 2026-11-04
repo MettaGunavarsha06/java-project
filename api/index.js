@@ -473,6 +473,7 @@ module.exports = async function handler(req, res) {
     const passed = percentage >= 50;
 
     const studentUser = users.find(u => u.id === parseInt(studentId)) || currentUser || users[1];
+    const timeTaken = (body.timeTakenSeconds !== undefined && body.timeTakenSeconds !== null) ? parseInt(body.timeTakenSeconds) : 10;
     const newAttempt = {
       id: attempts.length + 1,
       attemptId: attempts.length + 1,
@@ -482,8 +483,10 @@ module.exports = async function handler(req, res) {
       quizId: quiz.id,
       quizTitle: quiz.title,
       score,
+      scoreObtained: score,
       totalMarks: quiz.totalMarks,
       percentage,
+      timeTakenSeconds: timeTaken,
       attemptDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
       correctAnswers: correctCount,
       wrongAnswers: wrongCount,
@@ -560,7 +563,7 @@ module.exports = async function handler(req, res) {
       score: attempt.score,
       percentage: Number(percentage.toFixed ? percentage.toFixed(1) : percentage),
       passed: passed,
-      timeTakenSeconds: attempt.timeTakenSeconds || 120,
+      timeTakenSeconds: (attempt.timeTakenSeconds !== undefined && attempt.timeTakenSeconds !== null) ? attempt.timeTakenSeconds : 10,
       attemptDate: attempt.attemptDate || new Date().toISOString(),
       reviews: reviews,
       attempt: attempt,
