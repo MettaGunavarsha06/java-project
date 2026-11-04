@@ -5,35 +5,35 @@
   "rewrites": [
     {
       "source": "/api/quizzes/:id",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?quizId=:id"
     },
     {
       "source": "/api/quizzes/:id/questions",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?quizId=:id&questions=true"
     },
     {
       "source": "/api/student/quiz/:id/start",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?quizId=:id&action=start"
     },
     {
       "source": "/api/student/quiz/:id/submit",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?quizId=:id&action=submit"
     },
     {
       "source": "/api/student/results/:id",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?resultId=:id"
     },
     {
       "source": "/api/admin/candidates/:id/logins",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?candidateId=:id"
     },
     {
       "source": "/api/admin/quizzes/:id/generate-questions",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?quizId=:id&action=generate"
     },
     {
       "source": "/api/admin/export/quiz/:id",
-      "destination": "/api/index.js"
+      "destination": "/api/index.js?quizId=:id&action=export"
     }
   ]
 }

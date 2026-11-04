@@ -216,12 +216,31 @@ module.exports = async function handler(req, res) {
   const host = req.headers.host || 'localhost';
   const url = new URL(req.url, `http://${host}`);
   
-  // Resolve path from URL or rewrite query parameters
+  // Resolve path from URL, x-matched-path, or rewrite parameters
   let path = url.pathname;
-  if (url.searchParams.has('__path')) {
-    path = '/api/' + url.searchParams.get('__path').replace(/^\/+/, '');
-  } else if (req.headers['x-matched-path']) {
+  if (req.headers['x-matched-path']) {
     path = req.headers['x-matched-path'].split('?')[0];
+  } else if (url.searchParams.has('__path')) {
+    path = '/api/' + url.searchParams.get('__path').replace(/^\/+/, '');
+  } else if (url.searchParams.has('quizId')) {
+    const qId = url.searchParams.get('quizId');
+    if (url.searchParams.get('questions') === 'true') {
+      path = '/api/quizzes/' + qId + '/questions';
+    } else if (url.searchParams.get('action') === 'start') {
+      path = '/api/student/quiz/' + qId + '/start';
+    } else if (url.searchParams.get('action') === 'submit') {
+      path = '/api/student/quiz/' + qId + '/submit';
+    } else if (url.searchParams.get('action') === 'generate') {
+      path = '/api/admin/quizzes/' + qId + '/generate-questions';
+    } else if (url.searchParams.get('action') === 'export') {
+      path = '/api/admin/export/quiz/' + qId;
+    } else {
+      path = '/api/quizzes/' + qId;
+    }
+  } else if (url.searchParams.has('resultId')) {
+    path = '/api/student/results/' + url.searchParams.get('resultId');
+  } else if (url.searchParams.has('candidateId')) {
+    path = '/api/admin/candidates/' + url.searchParams.get('candidateId') + '/logins';
   } else if (path === '/api/index' || path === '/api' || path === '/api/index.js') {
     if (url.searchParams.has('path')) {
       path = '/api/' + url.searchParams.get('path').replace(/^\/+/, '');
