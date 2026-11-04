@@ -1,39 +1,13 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": "node -e \"const fs=require('fs'); fs.cpSync('src/main/webapp', 'public', {recursive:true}); console.log('Build completed');\"",
+  "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/api/quizzes/:id",
-      "destination": "/api/index.js?quizId=:id"
-    },
-    {
-      "source": "/api/quizzes/:id/questions",
-      "destination": "/api/index.js?quizId=:id&questions=true"
-    },
-    {
-      "source": "/api/student/quiz/:id/start",
-      "destination": "/api/index.js?quizId=:id&action=start"
-    },
-    {
-      "source": "/api/student/quiz/:id/submit",
-      "destination": "/api/index.js?quizId=:id&action=submit"
-    },
-    {
-      "source": "/api/student/results/:id",
-      "destination": "/api/index.js?resultId=:id"
-    },
-    {
-      "source": "/api/admin/candidates/:id/logins",
-      "destination": "/api/index.js?candidateId=:id"
-    },
-    {
-      "source": "/api/admin/quizzes/:id/generate-questions",
-      "destination": "/api/index.js?quizId=:id&action=generate"
-    },
-    {
-      "source": "/api/admin/export/quiz/:id",
-      "destination": "/api/index.js?quizId=:id&action=export"
+      "source": "/api/:path*",
+      "destination": "/api/index.js?__route=:path*"
     }
   ]
 }
