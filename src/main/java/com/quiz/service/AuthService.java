@@ -32,6 +32,7 @@ public class AuthService {
 
     public AuthService(UserDao userDao) {
         this.userDao = userDao;
+        this.activeSessions.putAll(com.quiz.dao.PersistentDataStore.loadSessions());
     }
 
     public User login(String email, String password) throws AuthenticationException, DatabaseException {
@@ -137,6 +138,12 @@ public class AuthService {
         if (data.containsKey("bio")) user.setBio((String) data.get("bio"));
 
         userDao.update(user);
+        for (Map.Entry<String, User> entry : activeSessions.entrySet()) {
+            if (entry.getValue().getId() == userId) {
+                entry.setValue(user);
+            }
+        }
+        com.quiz.dao.PersistentDataStore.saveSessionsAsync(activeSessions);
         return user;
     }
 
@@ -163,6 +170,7 @@ public class AuthService {
     public String createSession(User user) {
         String token = UUID.randomUUID().toString();
         activeSessions.put(token, user);
+        com.quiz.dao.PersistentDataStore.saveSessionsAsync(activeSessions);
         return token;
     }
 
@@ -174,6 +182,7 @@ public class AuthService {
     public void invalidateSession(String token) {
         if (token != null) {
             activeSessions.remove(token);
+            com.quiz.dao.PersistentDataStore.saveSessionsAsync(activeSessions);
         }
     }
 }

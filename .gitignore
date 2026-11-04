@@ -17,6 +17,8 @@ target/
 reports/*.txt
 reports/*.ser
 !reports/.gitkeep
+data/*.ser
+!data/.gitkeep
 
 # Virtual machines and log files
 *.log

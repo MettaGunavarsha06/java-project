@@ -41,6 +41,14 @@ public class QuizAttemptDao implements GenericDao<QuizAttempt, Integer> {
     }
 
     private static void seedSampleAttempts() {
+        Map<Integer, QuizAttempt> loaded = PersistentDataStore.loadAttempts();
+        if (!loaded.isEmpty()) {
+            attemptCache.putAll(loaded);
+            int maxId = attemptCache.keySet().stream().max(Integer::compareTo).orElse(20);
+            idCounter.set(maxId);
+            return;
+        }
+
         long now = System.currentTimeMillis();
         // 2 days ago
         createSeedAttempt(1, 2, "Alex Johnson", "alex@student.com", 1, "Java Core & OOP Fundamentals", 50, 100.0, new Timestamp(now - 172800000L));
@@ -54,6 +62,7 @@ public class QuizAttemptDao implements GenericDao<QuizAttempt, Integer> {
         createSeedAttempt(5, 3, "Sophia Chen", "sophia@student.com", 2, "Advanced Java: Collections & Multithreading", 50, 100.0, new Timestamp(now - 10800000L));
         // 1 hour ago
         createSeedAttempt(6, 4, "Liam Davis", "liam@student.com", 3, "Database Concepts & JDBC Connectivity", 40, 80.0, new Timestamp(now - 3600000L));
+        PersistentDataStore.saveAttemptsAsync(attemptCache);
     }
 
     private static void createSeedAttempt(int id, int sId, String sName, String sEmail, int qId, String qTitle, int score, double pct, Timestamp date) {
@@ -83,6 +92,7 @@ public class QuizAttemptDao implements GenericDao<QuizAttempt, Integer> {
                 attempt.setAttemptDate(new Timestamp(System.currentTimeMillis()));
             }
             attemptCache.put(newId, attempt);
+            PersistentDataStore.saveAttemptsAsync(attemptCache);
             if (answers != null && !answers.isEmpty()) {
                 for (StudentAnswer ans : answers) {
                     ans.setAttemptId(newId);
@@ -131,6 +141,8 @@ public class QuizAttemptDao implements GenericDao<QuizAttempt, Integer> {
 
             // Commit Transaction
             conn.commit();
+            attemptCache.put(attempt.getId(), attempt);
+            PersistentDataStore.saveAttemptsAsync(attemptCache);
             return attempt;
         } catch (SQLException e) {
             if (conn != null) {

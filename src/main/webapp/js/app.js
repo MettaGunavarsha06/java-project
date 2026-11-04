@@ -36,6 +36,31 @@ const Auth = {
 };
 
 /**
+ * Route guard requiring active login session and expected role
+ */
+function requireAuth(expectedRole = null) {
+  const token = Auth.getToken();
+  const user = Auth.getUser();
+
+  if (!token || !user) {
+    const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+    window.location.href = `login.html?redirect=${encodeURIComponent(currentPath)}`;
+    return null;
+  }
+
+  if (expectedRole && user.role !== expectedRole) {
+    if (user.role === 'ADMIN') {
+      window.location.href = 'admin-dashboard.html';
+    } else {
+      window.location.href = 'student-dashboard.html';
+    }
+    return null;
+  }
+
+  return user;
+}
+
+/**
  * Standardized fetch wrapper with Bearer token authentication
  */
 async function apiRequest(endpoint, options = {}) {

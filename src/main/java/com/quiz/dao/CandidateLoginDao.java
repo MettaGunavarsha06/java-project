@@ -35,21 +35,31 @@ public class CandidateLoginDao {
     }
 
     private static void seedSampleLogins() {
+        List<CandidateLoginHistory> loaded = PersistentDataStore.loadCandidateLogins();
+        if (!loaded.isEmpty()) {
+            memoryHistory.addAll(loaded);
+            int maxId = memoryHistory.stream().mapToInt(CandidateLoginHistory::getId).max().orElse(100);
+            idCounter.set(maxId);
+            return;
+        }
+
         memoryHistory.add(new CandidateLoginHistory(1, 2, "Alex Johnson", "alex@student.com",
                 LocalDateTime.now().minusDays(2).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Chrome/120.0", "SUCCESS"));
         memoryHistory.add(new CandidateLoginHistory(2, 2, "Alex Johnson", "alex@student.com",
                 LocalDateTime.now().minusDays(1).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Chrome/120.0", "SUCCESS"));
         memoryHistory.add(new CandidateLoginHistory(3, 3, "Sophia Chen", "sophia@student.com",
                 LocalDateTime.now().minusDays(1).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Firefox/121.0", "SUCCESS"));
+        PersistentDataStore.saveCandidateLoginsAsync(memoryHistory);
     }
 
     public CandidateLoginHistory recordLogin(int userId, String name, String email, String ip, String userAgent, String status) throws DatabaseException {
         String timestamp = LocalDateTime.now().format(FORMATTER);
         CandidateLoginHistory record = new CandidateLoginHistory(0, userId, name, email, timestamp, ip, userAgent, status);
+        record.setId(idCounter.incrementAndGet());
+        memoryHistory.add(0, record);
+        PersistentDataStore.saveCandidateLoginsAsync(memoryHistory);
 
         if (DatabaseConnection.isUsingEmbeddedFallback()) {
-            record.setId(idCounter.incrementAndGet());
-            memoryHistory.add(0, record);
             return record;
         }
 

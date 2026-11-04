@@ -48,6 +48,14 @@ public class UserDao implements GenericDao<User, Integer> {
     }
 
     private static void seedSampleUsers() {
+        Map<Integer, User> loaded = PersistentDataStore.loadUsers();
+        if (!loaded.isEmpty()) {
+            userCache.putAll(loaded);
+            int maxId = userCache.keySet().stream().max(Integer::compareTo).orElse(10);
+            idCounter.set(maxId);
+            return;
+        }
+
         Admin admin = new Admin(1, "Dr. Sarah Connor (Admin)", "admin@quiz.com", 
                 PasswordUtil.hashPassword("admin123"), "Academic Administration");
         admin.setPhone("+1-555-0199");
@@ -133,6 +141,7 @@ public class UserDao implements GenericDao<User, Integer> {
         userCache.put(s1.getId(), s1);
         userCache.put(s2.getId(), s2);
         userCache.put(s3.getId(), s3);
+        PersistentDataStore.saveUsersAsync(userCache);
     }
 
     @Override
@@ -142,6 +151,7 @@ public class UserDao implements GenericDao<User, Integer> {
             int newId = idCounter.incrementAndGet();
             user.setId(newId);
             userCache.put(newId, user);
+            PersistentDataStore.saveUsersAsync(userCache);
             return user;
         }
 
@@ -178,12 +188,15 @@ public class UserDao implements GenericDao<User, Integer> {
                     }
                 }
             }
+            userCache.put(user.getId(), user);
+            PersistentDataStore.saveUsersAsync(userCache);
             return user;
         } catch (SQLException e) {
-            // If MySQL fails, fallback to memory
+            // If MySQL fails, fallback to memory & persistent disk file
             int newId = idCounter.incrementAndGet();
             user.setId(newId);
             userCache.put(newId, user);
+            PersistentDataStore.saveUsersAsync(userCache);
             return user;
         }
     }
@@ -269,12 +282,11 @@ public class UserDao implements GenericDao<User, Integer> {
     @Override
     @AuditLog(action = "UPDATE_USER")
     public boolean update(User user) throws DatabaseException {
+        userCache.put(user.getId(), user);
+        PersistentDataStore.saveUsersAsync(userCache);
+
         if (DatabaseConnection.isUsingEmbeddedFallback()) {
-            if (userCache.containsKey(user.getId())) {
-                userCache.put(user.getId(), user);
-                return true;
-            }
-            return false;
+            return true;
         }
 
         String sql = "UPDATE users SET name = ?, email = ?, password = ?, role = ?, phone = ?, gender = ?, dob = ?, " +
@@ -303,11 +315,8 @@ public class UserDao implements GenericDao<User, Integer> {
             ps.setString(19, user.getStatus());
             ps.setInt(20, user.getId());
 
-            boolean ok = ps.executeUpdate() > 0;
-            userCache.put(user.getId(), user);
-            return ok;
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            userCache.put(user.getId(), user);
             return true;
         }
     }
@@ -322,8 +331,9 @@ public class UserDao implements GenericDao<User, Integer> {
         user.setLastLoginIp(ipAddress != null ? ipAddress : "127.0.0.1");
         user.incrementLoginCount();
 
-        // Also update memory cache
+        // Also update memory cache & persistent disk file
         userCache.put(user.getId(), user);
+        PersistentDataStore.saveUsersAsync(userCache);
 
         // Record history log
         loginDao.recordLogin(user.getId(), user.getName(), user.getEmail(), ipAddress, userAgent, "SUCCESS");
