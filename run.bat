@@ -8,5 +8,7 @@ if not exist bin\com\quiz\server\AppServer.class (
     call build.bat
 )
 
+call start_mysql.bat
+
 echo Starting Server with MySQL JDBC Driver...
 java -cp "bin;lib/*" com.quiz.server.AppServer

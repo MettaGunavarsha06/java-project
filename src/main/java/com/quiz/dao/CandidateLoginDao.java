@@ -44,17 +44,22 @@ public class CandidateLoginDao {
         }
 
         memoryHistory.add(new CandidateLoginHistory(1, 2, "Alex Johnson", "alex@student.com",
-                LocalDateTime.now().minusDays(2).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Chrome/120.0", "SUCCESS"));
+                LocalDateTime.now().minusDays(2).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Chrome/120.0",
+                "SUCCESS"));
         memoryHistory.add(new CandidateLoginHistory(2, 2, "Alex Johnson", "alex@student.com",
-                LocalDateTime.now().minusDays(1).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Chrome/120.0", "SUCCESS"));
+                LocalDateTime.now().minusDays(1).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Chrome/120.0",
+                "SUCCESS"));
         memoryHistory.add(new CandidateLoginHistory(3, 3, "Sophia Chen", "sophia@student.com",
-                LocalDateTime.now().minusDays(1).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Firefox/121.0", "SUCCESS"));
+                LocalDateTime.now().minusDays(1).format(FORMATTER), "127.0.0.1", "Mozilla/5.0 Firefox/121.0",
+                "SUCCESS"));
         PersistentDataStore.saveCandidateLoginsAsync(memoryHistory);
     }
 
-    public CandidateLoginHistory recordLogin(int userId, String name, String email, String ip, String userAgent, String status) throws DatabaseException {
+    public CandidateLoginHistory recordLogin(int userId, String name, String email, String ip, String userAgent,
+            String status) throws DatabaseException {
         String timestamp = LocalDateTime.now().format(FORMATTER);
-        CandidateLoginHistory record = new CandidateLoginHistory(0, userId, name, email, timestamp, ip, userAgent, status);
+        CandidateLoginHistory record = new CandidateLoginHistory(0, userId, name, email, timestamp, ip, userAgent,
+                status);
         record.setId(idCounter.incrementAndGet());
         memoryHistory.add(0, record);
         PersistentDataStore.saveCandidateLoginsAsync(memoryHistory);
@@ -65,7 +70,7 @@ public class CandidateLoginDao {
 
         String sql = "INSERT INTO candidate_login_history (user_id, login_time, ip_address, user_agent, login_status) VALUES (?, NOW(), ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, userId);
             ps.setString(2, ip != null ? ip : "127.0.0.1");
             ps.setString(3, userAgent != null ? userAgent : "Unknown Browser");
@@ -94,11 +99,12 @@ public class CandidateLoginDao {
         }
 
         List<CandidateLoginHistory> list = new ArrayList<>();
-        String sql = "SELECT h.id, h.user_id, u.name, u.email, h.login_time, h.ip_address, h.user_agent, h.login_status " +
-                     "FROM candidate_login_history h JOIN users u ON h.user_id = u.id " +
-                     "WHERE h.user_id = ? ORDER BY h.login_time DESC";
+        String sql = "SELECT h.id, h.user_id, u.name, u.email, h.login_time, h.ip_address, h.user_agent, h.login_status "
+                +
+                "FROM candidate_login_history h JOIN users u ON h.user_id = u.id " +
+                "WHERE h.user_id = ? ORDER BY h.login_time DESC";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -110,8 +116,7 @@ public class CandidateLoginDao {
                             rs.getString("login_time"),
                             rs.getString("ip_address"),
                             rs.getString("user_agent"),
-                            rs.getString("login_status")
-                    ));
+                            rs.getString("login_status")));
                 }
             }
             return list;
@@ -129,11 +134,12 @@ public class CandidateLoginDao {
         }
 
         List<CandidateLoginHistory> list = new ArrayList<>();
-        String sql = "SELECT h.id, h.user_id, u.name, u.email, h.login_time, h.ip_address, h.user_agent, h.login_status " +
-                     "FROM candidate_login_history h JOIN users u ON h.user_id = u.id " +
-                     "ORDER BY h.login_time DESC LIMIT ?";
+        String sql = "SELECT h.id, h.user_id, u.name, u.email, h.login_time, h.ip_address, h.user_agent, h.login_status "
+                +
+                "FROM candidate_login_history h JOIN users u ON h.user_id = u.id " +
+                "ORDER BY h.login_time DESC LIMIT ?";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -145,8 +151,7 @@ public class CandidateLoginDao {
                             rs.getString("login_time"),
                             rs.getString("ip_address"),
                             rs.getString("user_agent"),
-                            rs.getString("login_status")
-                    ));
+                            rs.getString("login_status")));
                 }
             }
             return list;
@@ -155,4 +160,3 @@ public class CandidateLoginDao {
         }
     }
 }
-
