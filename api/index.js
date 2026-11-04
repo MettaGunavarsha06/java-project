@@ -223,10 +223,22 @@ module.exports = async function handler(req, res) {
   } else if (req.headers['x-matched-path']) {
     path = req.headers['x-matched-path'].split('?')[0];
   } else if (path === '/api/index' || path === '/api' || path === '/api/index.js') {
-    // If rewritten to index without query param, inspect req.url
     if (url.searchParams.has('path')) {
       path = '/api/' + url.searchParams.get('path').replace(/^\/+/, '');
     }
+  }
+
+  path = path.replace(/\/+$/, '');
+
+  // API Root Status Check
+  if (path === '/api' || path === '') {
+    return sendJson(res, 200, {
+      success: true,
+      service: "Online Quiz Management System API",
+      status: "HEALTHY",
+      version: "2.0.0",
+      timestamp: new Date().toISOString()
+    });
   }
 
   const token = extractToken(req);

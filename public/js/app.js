@@ -77,11 +77,21 @@ async function apiRequest(endpoint, options = {}) {
       ...options,
       headers
     });
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      console.error('API response not JSON:', response.status, text.substring(0, 150));
+      return {
+        success: false,
+        message: `Server returned HTTP ${response.status}: ${text.replace(/<[^>]*>?/gm, '').trim().substring(0, 100) || 'Unrecognized response format'}`
+      };
+    }
     return data;
   } catch (err) {
     console.error('API Request failed:', err);
-    return { success: false, message: 'Network error or server unreachable.' };
+    return { success: false, message: 'Network error or server unreachable: ' + err.message };
   }
 }
 
