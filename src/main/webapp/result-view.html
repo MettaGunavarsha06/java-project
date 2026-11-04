@@ -47,9 +47,13 @@
         <h2 class="fw-bold mb-1" id="result-status-text">Congratulations, You Passed!</h2>
         <p class="text-muted mb-3" id="result-meta-text">Completed by Student on Date</p>
 
-        <div class="d-flex justify-content-center align-items-baseline gap-2 mb-3">
+        <div class="d-flex justify-content-center align-items-baseline gap-2 mb-1">
           <span class="result-score-display" id="result-percentage-display">80%</span>
           <span class="text-muted fs-5">Score: <strong id="result-score-marks">40 / 50</strong></span>
+        </div>
+
+        <div class="text-muted small mb-3">
+          <i class="bi bi-clock-history me-1 text-primary"></i> <span id="result-finished-time">Finished on Date at Time</span>
         </div>
 
         <div class="d-flex justify-content-center gap-3">
@@ -231,12 +235,30 @@
       document.getElementById('res-wrong-count').innerText = wrongAnswers;
       document.getElementById('res-unanswered-count').innerText = unansweredQuestions;
 
-      if (timeTaken < 60) {
-        document.getElementById('res-time-taken').innerText = `${timeTaken}s`;
-      } else {
-        const mins = Math.floor(timeTaken / 60);
-        const secs = timeTaken % 60;
-        document.getElementById('res-time-taken').innerText = `${mins}m ${secs}s`;
+      const timeTakenDisplay = timeTaken < 60 ? `${timeTaken}s` : `${Math.floor(timeTaken / 60)}m ${timeTaken % 60}s`;
+      document.getElementById('res-time-taken').innerText = timeTakenDisplay;
+
+      // Format completion time in user's local timezone (e.g., Nov 04, 2026, 09:12:35 PM)
+      let formattedDate = '';
+      try {
+        const rawDate = raw.attemptDate || att.attemptDate;
+        const d = rawDate ? new Date(rawDate.replace ? rawDate.replace(' ', 'T') : rawDate) : new Date();
+        formattedDate = isNaN(d.getTime()) ? (rawDate || new Date().toLocaleString()) : d.toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+      } catch (e) {
+        formattedDate = new Date().toLocaleString();
+      }
+
+      const finishEl = document.getElementById('result-finished-time');
+      if (finishEl) {
+        finishEl.innerHTML = `Finished on: <strong>${formattedDate}</strong> • Duration: <strong>${timeTakenDisplay}</strong>`;
       }
 
       // Chart
@@ -278,33 +300,52 @@
       const container = document.getElementById('questions-review-container');
       if (!container) return;
 
-      if (reviews.length === 0) {
-        container.innerHTML = '<p class="text-muted">No individual question details available.</p>';
+      if (!reviews || reviews.length === 0) {
+        container.innerHTML = '<p class="text-muted p-3">No individual question details available.</p>';
         return;
       }
 
       container.innerHTML = reviews.map((q, idx) => {
+        const userChoice = q.selectedAnswer || (q.userAnswer && q.userAnswer !== 'Not Answered' ? q.userAnswer : null);
+        const isRight = (q.correct !== undefined) 
+          ? !!q.correct 
+          : ((q.isCorrect !== undefined) 
+            ? !!q.isCorrect 
+            : (userChoice && q.correctAnswer && userChoice.toUpperCase() === q.correctAnswer.toUpperCase()));
+        
         let badge = '';
-        if (!q.selectedAnswer) {
-          badge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-dash-circle me-1"></i> Skipped / Unanswered</span>';
-        } else if (q.correct) {
-          badge = '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i> Correct (+Marks)</span>';
+        if (!userChoice) {
+          badge = '<span class="badge bg-warning text-dark"><i class="bi bi-dash-circle me-1"></i> Not Answered (0 Marks)</span>';
+        } else if (isRight) {
+          badge = '<span class="badge bg-success text-white"><i class="bi bi-check-circle-fill me-1"></i> Correct (+10 Marks)</span>';
         } else {
-          badge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-x-circle me-1"></i> Incorrect (Selected: Option ' + q.selectedAnswer + ')</span>';
+          badge = `<span class="badge bg-danger text-white"><i class="bi bi-x-circle-fill me-1"></i> Incorrect (You Chose Option ${escapeHtml(userChoice)})</span>`;
         }
 
         const renderOpt = (key, text) => {
           let styleClass = 'border rounded p-2';
-          if (q.correctAnswer === key) {
-            styleClass += ' bg-success-subtle border-success fw-bold';
-          } else if (q.selectedAnswer === key && !q.correct) {
-            styleClass += ' bg-danger-subtle border-danger text-danger';
+          let iconPrefix = '';
+          let tagSuffix = '';
+
+          const isThisCorrect = q.correctAnswer && (q.correctAnswer.toUpperCase() === key.toUpperCase());
+          const isThisSelected = userChoice && (userChoice.toUpperCase() === key.toUpperCase());
+
+          if (isThisCorrect) {
+            styleClass = 'border border-2 border-success bg-success-subtle text-success-emphasis fw-bold rounded p-2';
+            iconPrefix = '<i class="bi bi-check-circle-fill text-success me-1"></i> ';
+            tagSuffix = ' <span class="badge bg-success float-end">Correct Answer</span>';
+          } else if (isThisSelected && !isRight) {
+            styleClass = 'border border-2 border-danger bg-danger-subtle text-danger fw-bold rounded p-2';
+            iconPrefix = '<i class="bi bi-x-circle-fill text-danger me-1"></i> ';
+            tagSuffix = ' <span class="badge bg-danger float-end">Your Choice</span>';
+          } else {
+            styleClass = 'border rounded p-2 text-muted bg-white';
           }
-          return `<div class="col-md-6 ${styleClass}">${key}) ${escapeHtml(text)}</div>`;
+          return `<div class="col-md-6 ${styleClass}">${iconPrefix}<strong>${key})</strong> ${escapeHtml(text || '')}${tagSuffix}</div>`;
         };
 
         return `
-          <div class="card mb-3 border">
+          <div class="card mb-3 border shadow-sm ${isRight ? 'border-success-subtle' : (userChoice ? 'border-danger-subtle' : 'border-warning-subtle')}">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-2">
                 <h6 class="fw-bold mb-0">Q${idx + 1}. ${escapeHtml(q.questionText)}</h6>
@@ -316,9 +357,9 @@
                 ${renderOpt('C', q.optionC)}
                 ${renderOpt('D', q.optionD)}
               </div>
-              <div class="mt-2 text-muted small d-flex justify-content-between">
-                <span>Correct Answer: <strong class="text-success">Option ${q.correctAnswer}</strong></span>
-                <span>Your Answer: <strong>${q.selectedAnswer ? 'Option ' + q.selectedAnswer : 'None'}</strong></span>
+              <div class="mt-3 pt-2 border-top text-muted small d-flex flex-wrap justify-content-between align-items-center">
+                <span>Correct Answer: <strong class="text-success"><i class="bi bi-check2-circle me-1"></i>Option ${q.correctAnswer}</strong></span>
+                <span>Your Answer: <strong class="${isRight ? 'text-success' : (userChoice ? 'text-danger' : 'text-warning')}">${userChoice ? 'Option ' + userChoice : 'Not Answered'}</strong></span>
               </div>
             </div>
           </div>

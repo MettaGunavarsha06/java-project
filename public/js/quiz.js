@@ -339,6 +339,27 @@ async function confirmSubmit() {
 
   if (res.success && res.data) {
     res.data.timeTakenSeconds = res.data.timeTakenSeconds || elapsedSeconds;
+    res.data.attemptDate = new Date().toISOString();
+    if (!res.data.reviews || res.data.reviews.length === 0) {
+      res.data.reviews = currentQuestions.map((q, idx) => {
+        const userChoice = answersMap[q.id] || null;
+        const isRight = userChoice && q.correctAnswer && (userChoice.toUpperCase() === q.correctAnswer.toUpperCase());
+        return {
+          questionId: q.id,
+          questionIndex: idx + 1,
+          questionText: q.questionText,
+          optionA: q.optionA,
+          optionB: q.optionB,
+          optionC: q.optionC,
+          optionD: q.optionD,
+          correctAnswer: q.correctAnswer,
+          selectedAnswer: userChoice,
+          userAnswer: userChoice || 'Not Answered',
+          correct: !!isRight,
+          isCorrect: !!isRight
+        };
+      });
+    }
     const attemptId = res.data.attemptId || res.data.id || Date.now();
     try {
       localStorage.setItem(`result_${attemptId}`, JSON.stringify(res.data));

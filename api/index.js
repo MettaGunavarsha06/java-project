@@ -474,6 +474,29 @@ module.exports = async function handler(req, res) {
 
     const studentUser = users.find(u => u.id === parseInt(studentId)) || currentUser || users[1];
     const timeTaken = (body.timeTakenSeconds !== undefined && body.timeTakenSeconds !== null) ? parseInt(body.timeTakenSeconds) : 10;
+    const now = new Date();
+    const formattedDate = now.toISOString().replace('T', ' ').substring(0, 19);
+
+    // Build question reviews
+    const reviews = quiz.questions.map((q, idx) => {
+      const selected = answers[q.id] || null;
+      const isCorrect = selected && q.correctAnswer && (selected.toUpperCase() === q.correctAnswer.toUpperCase());
+      return {
+        questionId: q.id,
+        questionIndex: idx + 1,
+        questionText: q.questionText,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctAnswer: q.correctAnswer,
+        selectedAnswer: selected || null,
+        userAnswer: selected || 'Not Answered',
+        correct: !!isCorrect,
+        isCorrect: !!isCorrect
+      };
+    });
+
     const newAttempt = {
       id: attempts.length + 1,
       attemptId: attempts.length + 1,
@@ -487,12 +510,13 @@ module.exports = async function handler(req, res) {
       totalMarks: quiz.totalMarks,
       percentage,
       timeTakenSeconds: timeTaken,
-      attemptDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      attemptDate: formattedDate,
       correctAnswers: correctCount,
       wrongAnswers: wrongCount,
       unansweredQuestions: unansweredCount,
       passed,
-      answers
+      answers,
+      reviews
     };
 
     attempts.unshift(newAttempt);
@@ -521,10 +545,10 @@ module.exports = async function handler(req, res) {
       questions: []
     };
 
-    // Build question reviews
-    const reviews = (quiz.questions && quiz.questions.length > 0) ? quiz.questions.map((q, idx) => {
-      const userAns = attempt.answers ? attempt.answers[q.id] : (idx < attempt.correctAnswers ? q.correctAnswer : 'A');
-      const isCorrect = userAns && userAns.toUpperCase() === q.correctAnswer.toUpperCase();
+    // Build question reviews (use stored reviews if available, or generate from quiz questions)
+    const reviews = (attempt.reviews && attempt.reviews.length > 0) ? attempt.reviews : ((quiz.questions && quiz.questions.length > 0) ? quiz.questions.map((q, idx) => {
+      const userAns = attempt.answers ? attempt.answers[q.id] : (idx < attempt.correctAnswers ? q.correctAnswer : null);
+      const isCorrect = userAns && q.correctAnswer && (userAns.toUpperCase() === q.correctAnswer.toUpperCase());
       return {
         questionId: q.id,
         questionIndex: idx + 1,
@@ -534,10 +558,12 @@ module.exports = async function handler(req, res) {
         optionC: q.optionC,
         optionD: q.optionD,
         correctAnswer: q.correctAnswer,
+        selectedAnswer: userAns || null,
         userAnswer: userAns || 'Not Answered',
+        correct: !!isCorrect,
         isCorrect: !!isCorrect
       };
-    }) : [];
+    }) : []);
 
     const totalQ = quiz.questions ? quiz.questions.length : 5;
     const correctCount = attempt.correctAnswers !== undefined ? attempt.correctAnswers : Math.round((attempt.percentage / 100) * totalQ);
