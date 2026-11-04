@@ -201,4 +201,13 @@ public class AdminController {
         List<String> reports = reportService.listGeneratedReports();
         return ApiResponse.success(reports);
     }
+
+    public ApiResponse<?> getCandidateLogins(User user, int candidateId) {
+        if (!checkAdmin(user)) return ApiResponse.error("Access Denied");
+        try {
+            return ApiResponse.success(userService.getCandidateLoginHistory(candidateId));
+        } catch (DatabaseException e) {
+            return ApiResponse.error("Failed to load candidate login history: " + e.getMessage());
+        }
+    }
 }

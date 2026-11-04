@@ -4,6 +4,7 @@ import com.quiz.dao.QuizAttemptDao;
 import com.quiz.dao.UserDao;
 import com.quiz.exception.DatabaseException;
 import com.quiz.exception.ResourceNotFoundException;
+import com.quiz.model.CandidateLoginHistory;
 import com.quiz.model.QuizAttempt;
 import com.quiz.model.Student;
 import com.quiz.model.User;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
  * Demonstrates:
  * - Java Collections & Stream API searching and filtering
  * - Custom Exception handling
+ * - Candidate profile and login tracking enrichment
  */
 public class UserService {
 
@@ -48,8 +50,12 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
     }
 
+    public List<CandidateLoginHistory> getCandidateLoginHistory(int userId) throws DatabaseException {
+        return userDao.getCandidateLoginHistory(userId);
+    }
+
     /**
-     * Search students using Stream API filter and lambda expression.
+     * Search candidate students using Stream API filter across name, email, roll number, college, and branch.
      */
     public List<Student> searchStudents(String keyword) throws DatabaseException {
         if (keyword == null || keyword.trim().isEmpty()) {
@@ -57,8 +63,13 @@ public class UserService {
         }
         String lower = keyword.trim().toLowerCase();
         return getAllStudents().stream()
-                .filter(s -> s.getName().toLowerCase().contains(lower) || s.getEmail().toLowerCase().contains(lower))
+                .filter(s -> (s.getName() != null && s.getName().toLowerCase().contains(lower)) ||
+                             (s.getEmail() != null && s.getEmail().toLowerCase().contains(lower)) ||
+                             (s.getRollNumber() != null && s.getRollNumber().toLowerCase().contains(lower)) ||
+                             (s.getInstitution() != null && s.getInstitution().toLowerCase().contains(lower)) ||
+                             (s.getDepartment() != null && s.getDepartment().toLowerCase().contains(lower)) ||
+                             (s.getCity() != null && s.getCity().toLowerCase().contains(lower)) ||
+                             (s.getPhone() != null && s.getPhone().toLowerCase().contains(lower)))
                 .collect(Collectors.toList());
     }
 }
-

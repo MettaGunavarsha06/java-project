@@ -8,8 +8,8 @@ if not exist bin mkdir bin
 echo Collecting Java source files...
 dir /s /b src\main\java\*.java > sources.txt
 
-echo Running javac compiler...
-javac -d bin -cp "bin" @sources.txt
+echo Running javac compiler with MySQL JDBC Driver in classpath...
+javac -d bin -cp "bin;lib/*" @sources.txt
 
 if %ERRORLEVEL% equ 0 (
     echo.
@@ -21,4 +21,3 @@ if %ERRORLEVEL% equ 0 (
 
 if exist sources.txt del sources.txt
 echo ==============================================================
-

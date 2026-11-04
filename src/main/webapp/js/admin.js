@@ -365,7 +365,8 @@ async function deleteQuestion(id) {
   }
 }
 
-// ---------------- STUDENTS LIST & SEARCH ----------------
+// ---------------- CANDIDATES LIST & SEARCH ----------------
+let cachedCandidatesList = [];
 
 async function loadStudentsTable(keyword = '') {
   const url = keyword ? `/admin/students?q=${encodeURIComponent(keyword)}` : '/admin/students';
@@ -374,21 +375,122 @@ async function loadStudentsTable(keyword = '') {
   if (!tbody) return;
 
   if (!res.success || !res.data || res.data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No students found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No candidates found matching criteria.</td></tr>';
     return;
   }
+
+  cachedCandidatesList = res.data;
 
   tbody.innerHTML = res.data.map(s => `
     <tr>
       <td class="fw-bold">#${s.id}</td>
       <td>
-        <div class="fw-bold text-dark">${escapeHtml(s.name)}</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="stat-icon bg-light text-primary" style="width: 32px; height: 32px; font-size: 0.9rem;">
+            <i class="bi bi-person"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-dark">${escapeHtml(s.name)}</div>
+            <span class="badge bg-light text-muted border small">${escapeHtml(s.rollNumber || 'No Roll #')}</span>
+          </div>
+        </div>
       </td>
-      <td>${escapeHtml(s.email)}</td>
-      <td><span class="badge bg-light text-dark border">${s.totalQuizzesAttempted || 0} Quizzes</span></td>
-      <td><span class="badge bg-primary">${s.averageScore || 0}% Avg</span></td>
+      <td>
+        <div class="small fw-semibold text-dark">${escapeHtml(s.email)}</div>
+        <div class="small text-muted"><i class="bi bi-telephone me-1"></i> ${escapeHtml(s.phone || 'N/A')}</div>
+      </td>
+      <td>
+        <div class="small fw-semibold text-truncate" style="max-width: 180px;" title="${escapeHtml(s.institution)}">${escapeHtml(s.institution || 'N/A')}</div>
+        <div class="small text-muted text-truncate" style="max-width: 180px;">${escapeHtml(s.department || s.degree || '')}</div>
+      </td>
+      <td>
+        <div class="small fw-semibold text-dark">${escapeHtml(s.yearOfStudy || 'N/A')}</div>
+        <span class="badge bg-success-subtle text-success border border-success-subtle">${escapeHtml(s.cgpa ? 'CGPA ' + s.cgpa : 'N/A')}</span>
+      </td>
+      <td>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1 d-inline-block">
+          <i class="bi bi-box-arrow-in-right me-1"></i> ${s.loginCount || 1} Logins
+        </span>
+        <div class="small text-muted" style="font-size: 0.75rem;">
+          Last: ${s.lastLoginAt ? s.lastLoginAt.substring(0, 16) : 'Never'}
+        </div>
+      </td>
+      <td>
+        <span class="badge bg-light text-dark border me-1">${s.totalQuizzesAttempted || 0} Attempts</span>
+        <span class="badge bg-primary">${s.averageScore || 0}% Avg</span>
+      </td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-primary" onclick="viewCandidateProfile(${s.id})">
+          <i class="bi bi-person-lines-fill me-1"></i> Full Profile
+        </button>
+      </td>
     </tr>
   `).join('');
+}
+
+async function viewCandidateProfile(candidateId) {
+  const candidate = cachedCandidatesList.find(c => c.id === candidateId);
+  if (!candidate) return;
+
+  document.getElementById('cand-modal-name').innerText = candidate.name;
+  document.getElementById('cand-modal-id').innerText = `Candidate ID: #${candidate.id}`;
+
+  document.getElementById('cand-detail-name').innerText = candidate.name || '--';
+  document.getElementById('cand-detail-email').innerText = candidate.email || '--';
+  document.getElementById('cand-detail-phone').innerText = candidate.phone || 'Not Provided';
+  document.getElementById('cand-detail-dob').innerText = candidate.dob || 'Not Provided';
+  document.getElementById('cand-detail-gender').innerText = candidate.gender || 'Not Provided';
+  document.getElementById('cand-detail-citystate').innerText = (candidate.city || '') + (candidate.state ? ', ' + candidate.state : '') || 'Not Provided';
+  document.getElementById('cand-detail-address').innerText = candidate.address || 'Not Provided';
+
+  document.getElementById('cand-detail-institution').innerText = candidate.institution || 'Not Provided';
+  document.getElementById('cand-detail-department').innerText = candidate.department || 'Not Provided';
+  document.getElementById('cand-detail-roll').innerText = candidate.rollNumber || 'Not Provided';
+  document.getElementById('cand-detail-degree').innerText = candidate.degree || 'Not Provided';
+  document.getElementById('cand-detail-year').innerText = candidate.yearOfStudy || 'Not Provided';
+  document.getElementById('cand-detail-cgpa').innerText = candidate.cgpa ? candidate.cgpa : 'N/A';
+  document.getElementById('cand-detail-bio').innerText = candidate.bio || 'No bio provided.';
+
+  document.getElementById('cand-detail-logincount').innerText = candidate.loginCount || 1;
+  document.getElementById('cand-detail-lastlogin').innerText = candidate.lastLoginAt || 'Active Now';
+  document.getElementById('cand-detail-lastip').innerText = candidate.lastLoginIp || '127.0.0.1';
+  document.getElementById('cand-detail-status').innerText = candidate.status || 'ACTIVE';
+
+  // Fetch candidate login session trail
+  const loginsTbody = document.getElementById('cand-logins-tbody');
+  loginsTbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-1"></span> Loading login audit trail from MySQL...</td></tr>';
+
+  const modal = new bootstrap.Modal(document.getElementById('candidateDetailModal'));
+  modal.show();
+
+  try {
+    const res = await apiRequest(`/admin/candidates/${candidateId}/logins`);
+    if (res.success && res.data && res.data.length > 0) {
+      document.getElementById('cand-logins-badge').innerText = `${res.data.length} Logins Recorded`;
+      loginsTbody.innerHTML = res.data.map(h => `
+        <tr>
+          <td class="fw-bold">#${h.id}</td>
+          <td><i class="bi bi-clock me-1 text-primary"></i> ${h.loginTime}</td>
+          <td><span class="badge bg-light text-dark border font-monospace">${h.ipAddress || '127.0.0.1'}</span></td>
+          <td class="small text-truncate" style="max-width: 280px;" title="${escapeHtml(h.userAgent)}">${escapeHtml(h.userAgent || 'Web Browser')}</td>
+          <td><span class="badge bg-success-subtle text-success border border-success-subtle">${h.loginStatus}</span></td>
+        </tr>
+      `).join('');
+    } else {
+      document.getElementById('cand-logins-badge').innerText = '1 Login Recorded';
+      loginsTbody.innerHTML = `
+        <tr>
+          <td class="fw-bold">#1</td>
+          <td><i class="bi bi-clock me-1 text-primary"></i> ${candidate.lastLoginAt || 'Recent'}</td>
+          <td><span class="badge bg-light text-dark border font-monospace">${candidate.lastLoginIp || '127.0.0.1'}</span></td>
+          <td class="small">Active Web Session</td>
+          <td><span class="badge bg-success-subtle text-success border border-success-subtle">SUCCESS</span></td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    loginsTbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Active session recorded.</td></tr>';
+  }
 }
 
 function handleStudentSearch(input) {

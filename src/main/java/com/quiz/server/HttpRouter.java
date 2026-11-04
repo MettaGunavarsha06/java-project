@@ -67,20 +67,19 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
         String body = new String(bodyBytes, StandardCharsets.UTF_8);
         Map<String, Object> bodyMap = parseSimpleJson(body);
 
-        // ---------------- AUTH ROUTES ----------------
+        // ---------------- AUTH & CANDIDATE ROUTES ----------------
         if ("/api/auth/login".equals(path) && "POST".equals(method)) {
             String email = (String) bodyMap.get("email");
             String password = (String) bodyMap.get("password");
-            ApiResponse<?> res = authController.login(email, password);
+            String clientIp = headers.getOrDefault("x-forwarded-for", headers.getOrDefault("host", "127.0.0.1"));
+            String userAgent = headers.getOrDefault("user-agent", "Mozilla/5.0 WebBrowser");
+            ApiResponse<?> res = authController.login(email, password, clientIp, userAgent);
             sendJsonResponse(out, res.isSuccess() ? 200 : 401, res.isSuccess() ? "OK" : "Unauthorized", res);
             return;
         }
 
         if ("/api/auth/register".equals(path) && "POST".equals(method)) {
-            String name = (String) bodyMap.get("name");
-            String email = (String) bodyMap.get("email");
-            String password = (String) bodyMap.get("password");
-            ApiResponse<?> res = authController.register(name, email, password);
+            ApiResponse<?> res = authController.registerCandidate(bodyMap);
             sendJsonResponse(out, res.isSuccess() ? 200 : 400, res.isSuccess() ? "OK" : "Bad Request", res);
             return;
         }
@@ -88,6 +87,18 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
         if ("/api/auth/me".equals(path) && "GET".equals(method)) {
             ApiResponse<?> res = authController.getCurrentUser(token);
             sendJsonResponse(out, res.isSuccess() ? 200 : 401, res.isSuccess() ? "OK" : "Unauthorized", res);
+            return;
+        }
+
+        if ("/api/auth/profile".equals(path) && "GET".equals(method)) {
+            ApiResponse<?> res = authController.getCandidateProfile(token);
+            sendJsonResponse(out, res.isSuccess() ? 200 : 401, res.isSuccess() ? "OK" : "Unauthorized", res);
+            return;
+        }
+
+        if ("/api/auth/profile".equals(path) && "POST".equals(method)) {
+            ApiResponse<?> res = authController.updateProfile(token, bodyMap);
+            sendJsonResponse(out, res.isSuccess() ? 200 : 400, res.isSuccess() ? "OK" : "Bad Request", res);
             return;
         }
 
@@ -233,9 +244,16 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
             return;
         }
 
-        if ("/api/admin/students".equals(path) && "GET".equals(method)) {
+        if (("/api/admin/students".equals(path) || "/api/admin/candidates".equals(path)) && "GET".equals(method)) {
             String q = queryParams.get("q");
             ApiResponse<?> res = adminController.getStudents(currentUser, q);
+            sendJsonResponse(out, res.isSuccess() ? 200 : 403, res.isSuccess() ? "OK" : "Forbidden", res);
+            return;
+        }
+
+        if (path.matches("^/api/admin/candidates/\\d+/logins$") && "GET".equals(method)) {
+            int candidateId = Integer.parseInt(path.split("/")[4]);
+            ApiResponse<?> res = adminController.getCandidateLogins(currentUser, candidateId);
             sendJsonResponse(out, res.isSuccess() ? 200 : 403, res.isSuccess() ? "OK" : "Forbidden", res);
             return;
         }

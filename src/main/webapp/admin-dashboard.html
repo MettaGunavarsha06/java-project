@@ -167,28 +167,34 @@
         </div>
       </div>
 
-      <!-- 2. REGISTERED STUDENTS TAB -->
+      <!-- 2. REGISTERED CANDIDATES TAB -->
       <div class="tab-pane fade" id="tab-students" role="tabpanel">
         <div class="card-custom">
           <div class="card-custom-header">
-            <h5 class="fw-bold mb-0">Registered Students</h5>
-            <div style="max-width: 300px; width: 100%;">
-              <input type="text" class="form-control form-control-sm" placeholder="Search by name or email..." oninput="handleStudentSearch(this)">
+            <div>
+              <h5 class="fw-bold mb-0">Registered Examination Candidates</h5>
+              <p class="text-muted small mb-0">Complete academic profiles, contact records, and login audit tracking stored in MySQL</p>
+            </div>
+            <div style="max-width: 340px; width: 100%;">
+              <input type="text" class="form-control form-control-sm" placeholder="Search by name, roll no, college, branch..." oninput="handleStudentSearch(this)">
             </div>
           </div>
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th style="width: 70px;">ID</th>
-                  <th>Student Name</th>
-                  <th>Email</th>
-                  <th>Attempts</th>
-                  <th>Average Score</th>
+                  <th style="width: 60px;">ID</th>
+                  <th>Candidate & Roll No</th>
+                  <th>Contact Information</th>
+                  <th>College & Branch</th>
+                  <th>Year / CGPA</th>
+                  <th>Login Tracking</th>
+                  <th>Quiz Performance</th>
+                  <th class="text-end">Candidate Profile</th>
                 </tr>
               </thead>
               <tbody id="admin-students-tbody">
-                <tr><td colspan="5" class="text-center py-4 text-muted">Loading students...</td></tr>
+                <tr><td colspan="8" class="text-center py-4 text-muted">Loading candidates...</td></tr>
               </tbody>
             </table>
           </div>
@@ -416,6 +422,114 @@
         </div>
         <div class="modal-footer bg-light border-top">
           <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Candidate Full Profile & Login Audit Trail Modal ("Everything About That Person") -->
+  <div class="modal fade" id="candidateDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2">
+            <div class="stat-icon" style="width: 40px; height: 40px; font-size: 1.2rem;">
+              <i class="bi bi-person-vcard text-primary"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold mb-0" id="cand-modal-name">Candidate Full Record</h5>
+              <span class="text-muted small" id="cand-modal-id">Candidate ID: #--</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- Overview Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="p-3 rounded-3 border bg-white h-100 shadow-sm">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-fill me-1"></i> Personal Identity</h6>
+                <ul class="list-unstyled small mb-0">
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Full Name:</strong> <span id="cand-detail-name" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Email:</strong> <span id="cand-detail-email" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Phone:</strong> <span id="cand-detail-phone" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Date of Birth:</strong> <span id="cand-detail-dob" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Gender:</strong> <span id="cand-detail-gender" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">City / State:</strong> <span id="cand-detail-citystate" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Address:</strong> <span id="cand-detail-address" class="fw-semibold text-truncate" style="max-width: 180px;">--</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="p-3 rounded-3 border bg-white h-100 shadow-sm">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-mortarboard me-1"></i> Academic Profile</h6>
+                <ul class="list-unstyled small mb-0">
+                  <li class="py-1"><strong class="text-muted">Institution:</strong><br><span id="cand-detail-institution" class="fw-semibold text-dark">--</span></li>
+                  <li class="py-1"><strong class="text-muted">Department:</strong><br><span id="cand-detail-department" class="fw-semibold text-dark">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Roll Number:</strong> <span id="cand-detail-roll" class="fw-semibold text-primary">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Degree:</strong> <span id="cand-detail-degree" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Year of Study:</strong> <span id="cand-detail-year" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">CGPA / %:</strong> <span id="cand-detail-cgpa" class="badge bg-success-subtle text-success">--</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="p-3 rounded-3 border bg-white h-100 shadow-sm">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-check me-1"></i> Login & Session Audit</h6>
+                <div class="card p-2 mb-2 bg-light border-0 small">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Total Login Count:</span>
+                    <span class="badge bg-primary fs-6" id="cand-detail-logincount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Last Login Time:</span>
+                    <span class="fw-semibold text-dark" id="cand-detail-lastlogin">--</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Last IP Host:</span>
+                    <span class="badge bg-secondary-subtle text-secondary" id="cand-detail-lastip">127.0.0.1</span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="text-muted">Account Status:</span>
+                    <span class="badge bg-success" id="cand-detail-status">ACTIVE</span>
+                  </div>
+                </div>
+                <div class="p-2 rounded bg-light border small">
+                  <strong class="text-muted d-block mb-1">Candidate Bio:</strong>
+                  <span id="cand-detail-bio" class="text-muted fst-italic">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Login History Table -->
+          <div class="card-custom">
+            <div class="card-custom-header py-2">
+              <h6 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history me-1 text-primary"></i> Login Session Trail (MySQL: <code>candidate_login_history</code>)</h6>
+              <span class="badge bg-light text-muted border" id="cand-logins-badge">0 Logins Recorded</span>
+            </div>
+            <div class="table-responsive" style="max-height: 240px; overflow-y: auto;">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>#</th>
+                    <th>Timestamp</th>
+                    <th>IP Address</th>
+                    <th>Browser / User Agent</th>
+                    <th>Login Status</th>
+                  </tr>
+                </thead>
+                <tbody id="cand-logins-tbody">
+                  <tr><td colspan="5" class="text-center py-3 text-muted">Loading candidate login sessions...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close Record</button>
         </div>
       </div>
     </div>
