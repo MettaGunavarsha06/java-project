@@ -1,11 +1,14 @@
 /**
  * Vercel Serverless Function Handler
- * Provides full serverless backend API for the Online Quiz Management System
- * when deployed to Vercel.
+ * Complete serverless backend API for the Online Quiz Management System.
+ * Fully compatible with Vercel edge/serverless execution.
  */
 
-// In-memory data store for serverless execution
-const users = [
+const fs = require('fs');
+const path = require('path');
+
+// Candidate users store
+let users = [
   {
     id: 1,
     name: "Dr. Sarah Connor (Admin)",
@@ -60,20 +63,20 @@ const users = [
     email: "sophia@student.com",
     password: "student123",
     role: "STUDENT",
-    phone: "+1-555-0178",
+    phone: "+1-555-0177",
     gender: "Female",
-    dob: "2004-02-18",
-    address: "248 Tech Innovation Blvd",
-    city: "Austin",
-    state: "Texas",
-    institution: "Texas Institute of Advanced Science",
-    department: "Information Technology",
-    rollNumber: "IT-2024-045",
-    degree: "B.S. in Information Systems",
+    dob: "2004-01-15",
+    address: "45 Innovation Way, Suite 12",
+    city: "Seattle",
+    state: "Washington",
+    institution: "Northwest University of Engineering",
+    department: "Information Science",
+    rollNumber: "IS-2024-045",
+    degree: "B.S. in Computer Science",
     yearOfStudy: "2nd Year",
-    cgpa: "9.65",
-    bio: "Full-stack web application developer, AI/ML explorer, and hackathon winner.",
-    loginCount: 21,
+    cgpa: "9.15",
+    bio: "Aspiring full-stack developer focusing on microservices and databases.",
+    loginCount: 9,
     lastLoginAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
     lastLoginIp: "127.0.0.1",
     status: "ACTIVE"
@@ -84,37 +87,37 @@ const users = [
     email: "liam@student.com",
     password: "student123",
     role: "STUDENT",
-    phone: "+1-555-0123",
+    phone: "+1-555-0188",
     gender: "Male",
     dob: "2002-11-30",
-    address: "512 Lakeview Avenue",
-    city: "Chicago",
-    state: "Illinois",
-    institution: "Midwest Engineering Academy",
-    department: "Software Engineering",
-    rollNumber: "SE-2024-089",
-    degree: "B.Tech in Software Engineering",
+    address: "88 University Ave, Room 204",
+    city: "Austin",
+    state: "Texas",
+    institution: "Texas Polytechnic Institute",
+    department: "Data Engineering",
+    rollNumber: "DE-2024-088",
+    degree: "B.Tech in Data Science",
     yearOfStudy: "4th Year",
-    cgpa: "8.80",
-    bio: "Distributed database enthusiast and cloud architecture student.",
-    loginCount: 9,
+    cgpa: "8.85",
+    bio: "Data science enthusiast and relational database architect.",
+    loginCount: 6,
     lastLoginAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
     lastLoginIp: "127.0.0.1",
     status: "ACTIVE"
   }
 ];
 
-const loginHistory = [
-  { id: 1, userId: 2, name: "Alex Johnson", email: "alex@student.com", loginTime: "2026-11-02 14:20:00", ipAddress: "127.0.0.1", userAgent: "Mozilla/5.0 Chrome/120.0", loginStatus: "SUCCESS" },
-  { id: 2, userId: 2, name: "Alex Johnson", email: "alex@student.com", loginTime: "2026-11-03 10:15:00", ipAddress: "127.0.0.1", userAgent: "Mozilla/5.0 Chrome/120.0", loginStatus: "SUCCESS" },
-  { id: 3, userId: 3, name: "Sophia Chen", email: "sophia@student.com", loginTime: "2026-11-03 16:45:00", ipAddress: "127.0.0.1", userAgent: "Mozilla/5.0 Firefox/121.0", loginStatus: "SUCCESS" }
+let loginHistory = [
+  { id: 1, userId: 2, name: "Alex Johnson", email: "alex@student.com", loginTime: "2026-11-04 10:15:22", ipAddress: "192.168.1.101", userAgent: "Mozilla/5.0 Chrome/120.0.0", loginStatus: "SUCCESS" },
+  { id: 2, userId: 1, name: "Dr. Sarah Connor (Admin)", email: "admin@quiz.com", loginTime: "2026-11-04 09:30:10", ipAddress: "192.168.1.5", userAgent: "Mozilla/5.0 Edge/120.0.0", loginStatus: "SUCCESS" },
+  { id: 3, userId: 3, name: "Sophia Chen", email: "sophia@student.com", loginTime: "2026-11-03 16:45:00", ipAddress: "192.168.1.102", userAgent: "Mozilla/5.0 Safari/17.2", loginStatus: "SUCCESS" }
 ];
 
 let quizzes = [
   {
     id: 1,
     title: "Java Core & OOP Fundamentals",
-    description: "Test your knowledge on Object-Oriented Programming, Inheritance, Polymorphism, and Encapsulation in Java.",
+    description: "Comprehensive assessment covering Object-Oriented Programming, Abstraction, Polymorphism, Inheritance, Encapsulation, and Java 8 Lambdas.",
     duration: 10,
     totalMarks: 50,
     questions: [
@@ -168,7 +171,7 @@ function sendJson(res, statusCode, payload) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   res.statusCode = statusCode;
   res.end(JSON.stringify(payload));
 }
@@ -198,17 +201,34 @@ function extractToken(req) {
   return null;
 }
 
+/**
+ * Main Request Handler for Vercel Serverless Function
+ */
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.statusCode = 204;
     return res.end();
   }
 
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const path = url.pathname;
+  const host = req.headers.host || 'localhost';
+  const url = new URL(req.url, `http://${host}`);
+  
+  // Resolve path from URL or rewrite query parameters
+  let path = url.pathname;
+  if (url.searchParams.has('__path')) {
+    path = '/api/' + url.searchParams.get('__path').replace(/^\/+/, '');
+  } else if (req.headers['x-matched-path']) {
+    path = req.headers['x-matched-path'].split('?')[0];
+  } else if (path === '/api/index' || path === '/api' || path === '/api/index.js') {
+    // If rewritten to index without query param, inspect req.url
+    if (url.searchParams.has('path')) {
+      path = '/api/' + url.searchParams.get('path').replace(/^\/+/, '');
+    }
+  }
+
   const token = extractToken(req);
   const currentUser = token ? sessions.get(token) : null;
   const body = req.method !== 'GET' ? await parseBody(req) : {};
@@ -223,7 +243,7 @@ module.exports = async function handler(req, res) {
 
     user.loginCount = (user.loginCount || 0) + 1;
     user.lastLoginAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    user.lastLoginIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+    user.lastLoginIp = req.headers['x-forwarded-for'] || (req.socket ? req.socket.remoteAddress : '127.0.0.1');
 
     loginHistory.unshift({
       id: loginHistory.length + 1,
@@ -278,7 +298,7 @@ module.exports = async function handler(req, res) {
       bio: body.bio || '',
       loginCount: 1,
       lastLoginAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      lastLoginIp: req.headers['x-forwarded-for'] || '127.0.0.1',
+      lastLoginIp: req.headers['x-forwarded-for'] || (req.socket ? req.socket.remoteAddress : '127.0.0.1'),
       status: 'ACTIVE'
     };
 
@@ -323,20 +343,20 @@ module.exports = async function handler(req, res) {
       description: q.description,
       duration: q.duration,
       totalMarks: q.totalMarks,
-      questionCount: q.questions ? q.questions.length : 0
+      totalQuestions: q.questions ? q.questions.length : 0
     }));
     return sendJson(res, 200, { success: true, data: safeQuizzes });
   }
 
   if (path === '/api/quizzes/search' && req.method === 'GET') {
-    const q = (url.searchParams.get('q') || '').toLowerCase();
-    const filtered = quizzes.filter(quiz => quiz.title.toLowerCase().includes(q) || quiz.description.toLowerCase().includes(q));
+    const keyword = (url.searchParams.get('q') || '').toLowerCase();
+    const filtered = quizzes.filter(q => q.title.toLowerCase().includes(keyword) || q.description.toLowerCase().includes(keyword));
     return sendJson(res, 200, { success: true, data: filtered });
   }
 
-  const quizDetailMatch = path.match(/^\/api\/quizzes\/(\d+)$/);
-  if (quizDetailMatch && req.method === 'GET') {
-    const qId = parseInt(quizDetailMatch[1]);
+  const quizByIdMatch = path.match(/^\/api\/quizzes\/(\d+)$/);
+  if (quizByIdMatch && req.method === 'GET') {
+    const qId = parseInt(quizByIdMatch[1]);
     const quiz = quizzes.find(q => q.id === qId);
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
     return sendJson(res, 200, { success: true, data: quiz });
@@ -347,7 +367,6 @@ module.exports = async function handler(req, res) {
     const qId = parseInt(quizQuestionsMatch[1]);
     const quiz = quizzes.find(q => q.id === qId);
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
-    // Sanitize correct answers for student view
     const clientQuestions = quiz.questions.map(q => ({
       id: q.id,
       quizId: q.quizId,
@@ -360,7 +379,8 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, { success: true, data: clientQuestions });
   }
 
-  const quizStartMatch = path.match(/^\/api\/quizzes\/(\d+)\/start$/);
+  // Quiz Start route (supports both /api/quizzes/:id/start and /api/student/quiz/:id/start)
+  const quizStartMatch = path.match(/^\/api\/(?:quizzes|student\/quiz)\/(\d+)\/start$/);
   if (quizStartMatch && req.method === 'POST') {
     const qId = parseInt(quizStartMatch[1]);
     const quiz = quizzes.find(q => q.id === qId);
@@ -372,16 +392,35 @@ module.exports = async function handler(req, res) {
         sessionId,
         quizId: quiz.id,
         durationMinutes: quiz.duration,
+        durationSeconds: quiz.duration * 60,
         totalQuestions: quiz.questions.length,
-        startTime: Date.now()
+        startTime: Date.now(),
+        quiz: {
+          id: quiz.id,
+          title: quiz.title,
+          description: quiz.description,
+          duration: quiz.duration,
+          totalMarks: quiz.totalMarks,
+          questions: quiz.questions.map(q => ({
+            id: q.id,
+            quizId: q.quizId,
+            questionText: q.questionText,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD
+          }))
+        }
       }
     });
   }
 
   // ---------------- STUDENT SUBMISSION & RESULTS ----------------
-  if (path === '/api/student/submit' && req.method === 'POST') {
-    const { studentId, quizId, answers = {} } = body;
-    const quiz = quizzes.find(q => q.id === parseInt(quizId));
+  const quizSubmitMatch = path.match(/^\/api\/(?:student\/submit|student\/quiz\/(\d+)\/submit)$/);
+  if (quizSubmitMatch && req.method === 'POST') {
+    const quizIdParam = quizSubmitMatch[1] ? parseInt(quizSubmitMatch[1]) : parseInt(body.quizId);
+    const { studentId, answers = {} } = body;
+    const quiz = quizzes.find(q => q.id === quizIdParam);
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
 
     let correctCount = 0;
@@ -399,14 +438,15 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    const marksPerQ = quiz.totalMarks / quiz.questions.length;
+    const marksPerQ = quiz.questions.length > 0 ? quiz.totalMarks / quiz.questions.length : 0;
     const score = Math.round(correctCount * marksPerQ);
-    const percentage = Math.round((score / quiz.totalMarks) * 1000) / 10;
+    const percentage = quiz.totalMarks > 0 ? Math.round((score / quiz.totalMarks) * 1000) / 10 : 0;
     const passed = percentage >= 50;
 
     const studentUser = users.find(u => u.id === parseInt(studentId)) || currentUser || users[1];
     const newAttempt = {
       id: attempts.length + 1,
+      attemptId: attempts.length + 1,
       studentId: studentUser.id,
       studentName: studentUser.name,
       studentEmail: studentUser.email,
@@ -438,53 +478,70 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, { success: true, data: studentAttempts });
   }
 
-  const resultDetailMatch = path.match(/^\/api\/student\/results\/(\d+)$/);
-  if (resultDetailMatch && req.method === 'GET') {
-    const attId = parseInt(resultDetailMatch[1]);
-    const attempt = attempts.find(a => a.id === attId);
-    if (!attempt) return sendJson(res, 404, { success: false, message: 'Result not found' });
+  const resultByIdMatch = path.match(/^\/api\/student\/results\/(\d+)$/);
+  if (resultByIdMatch && req.method === 'GET') {
+    const aId = parseInt(resultByIdMatch[1]);
+    const attempt = attempts.find(a => a.id === aId || a.attemptId === aId);
+    if (!attempt) return sendJson(res, 404, { success: false, message: 'Result attempt not found' });
     const quiz = quizzes.find(q => q.id === attempt.quizId);
-    return sendJson(res, 200, { success: true, data: { ...attempt, quiz } });
+    return sendJson(res, 200, { success: true, data: { attempt, quiz } });
   }
 
   // ---------------- LEADERBOARD ----------------
   if (path === '/api/leaderboard' && req.method === 'GET') {
-    const sorted = [...attempts].sort((a, b) => b.percentage - a.percentage);
-    const ranked = sorted.slice(0, 25).map((a, idx) => ({
+    const quizId = url.searchParams.get('quizId');
+    let board = attempts.map((a, idx) => ({
       rank: idx + 1,
-      studentName: a.studentName,
-      studentEmail: a.studentEmail,
+      name: a.studentName,
+      email: a.studentEmail,
       quizTitle: a.quizTitle,
+      quizId: a.quizId,
       score: a.score,
       totalMarks: a.totalMarks,
       percentage: a.percentage,
       attemptDate: a.attemptDate
     }));
-    return sendJson(res, 200, { success: true, data: ranked });
+
+    if (quizId) {
+      board = board.filter(b => b.quizId === parseInt(quizId));
+    }
+    board.sort((a, b) => b.score - a.score);
+    board.forEach((b, i) => { b.rank = i + 1; });
+    return sendJson(res, 200, { success: true, data: board });
   }
 
   // ---------------- ADMIN ROUTES ----------------
-  if ((path === '/api/admin/students' || path === '/api/admin/candidates') && req.method === 'GET') {
-    const q = (url.searchParams.get('q') || '').toLowerCase();
-    const students = users.filter(u => u.role === 'STUDENT').map(s => {
-      const studentAtts = attempts.filter(a => a.studentId === s.id);
-      const avg = studentAtts.length > 0 ? (studentAtts.reduce((sum, a) => sum + a.percentage, 0) / studentAtts.length).toFixed(1) : 0;
-      return {
-        ...s,
-        totalQuizzesAttempted: studentAtts.length,
-        averageScore: Number(avg)
-      };
-    });
-
-    const filtered = q ? students.filter(s => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q) || (s.rollNumber && s.rollNumber.toLowerCase().includes(q))) : students;
-    return sendJson(res, 200, { success: true, data: filtered });
+  if (path === '/api/admin/candidates' && req.method === 'GET') {
+    const candidates = users.filter(u => u.role === 'STUDENT').map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      gender: u.gender,
+      dob: u.dob,
+      institution: u.institution,
+      department: u.department,
+      rollNumber: u.rollNumber,
+      degree: u.degree,
+      yearOfStudy: u.yearOfStudy,
+      cgpa: u.cgpa,
+      city: u.city,
+      state: u.state,
+      address: u.address,
+      bio: u.bio,
+      loginCount: u.loginCount,
+      lastLoginAt: u.lastLoginAt,
+      lastLoginIp: u.lastLoginIp,
+      status: u.status
+    }));
+    return sendJson(res, 200, { success: true, data: candidates });
   }
 
-  const candLoginsMatch = path.match(/^\/api\/admin\/candidates\/(\d+)\/logins$/);
-  if (candLoginsMatch && req.method === 'GET') {
-    const candId = parseInt(candLoginsMatch[1]);
-    const candLogins = loginHistory.filter(h => h.userId === candId);
-    return sendJson(res, 200, { success: true, data: candLogins });
+  const candidateLoginsMatch = path.match(/^\/api\/admin\/candidates\/(\d+)\/logins$/);
+  if (candidateLoginsMatch && req.method === 'GET') {
+    const cId = parseInt(candidateLoginsMatch[1]);
+    const history = loginHistory.filter(h => h.userId === cId);
+    return sendJson(res, 200, { success: true, data: history });
   }
 
   if (path === '/api/admin/attempts' && req.method === 'GET') {
@@ -493,8 +550,10 @@ module.exports = async function handler(req, res) {
 
   if (path === '/api/admin/stats' && req.method === 'GET') {
     const totalStudents = users.filter(u => u.role === 'STUDENT').length;
-    const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((sum, a) => sum + a.percentage, 0) / attempts.length) : 0;
-    const passed = attempts.filter(a => a.percentage >= 50).length;
+    const passed = attempts.filter(a => a.passed).length;
+    const avgScore = attempts.length > 0
+      ? Math.round(attempts.reduce((acc, a) => acc + a.percentage, 0) / attempts.length)
+      : 0;
     const passRate = attempts.length > 0 ? Math.round((passed / attempts.length) * 100) : 0;
 
     return sendJson(res, 200, {
@@ -537,7 +596,7 @@ module.exports = async function handler(req, res) {
       quiz.questions.push({
         id: qNum,
         quizId: quiz.id,
-        questionText: `Question #${qNum}: Practical evaluation of Java and relational database concepts.`,
+        questionText: `Question #${qNum}: Practical evaluation of Java, SQL, and Relational Database concepts.`,
         optionA: "Option A",
         optionB: "Option B (Correct)",
         optionC: "Option C",
@@ -558,7 +617,7 @@ module.exports = async function handler(req, res) {
         mode: "VERCEL_SERVERLESS_DATABASE",
         database: "online_quiz_db",
         user: "root",
-        statusMessage: "Connected to Vercel Cloud Database Engine (online_quiz_db)"
+        statusMessage: "Connected to Cloud Database Engine (online_quiz_db)"
       }
     });
   }
@@ -568,7 +627,7 @@ module.exports = async function handler(req, res) {
       success: true,
       data: {
         connected: true,
-        message: "Connected to Vercel Cloud Database Engine successfully!"
+        message: "Connected to Cloud Database Engine successfully!"
       }
     });
   }

@@ -4,7 +4,7 @@
   "description": "Online Quiz Management System - Full Stack Java & Vercel Cloud Deployment",
   "main": "api/index.js",
   "scripts": {
-    "build": "node -e \"const fs=require('fs'); fs.cpSync('src/main/webapp', 'public', {recursive:true}); console.log('Vercel static build completed.');\""
+    "build": "node -e \"const fs=require('fs'); fs.cpSync('src/main/webapp', '.', {recursive:true}); console.log('Static assets synchronized.');\""
   },
   "keywords": [
     "quiz",

@@ -276,7 +276,13 @@
           body: JSON.stringify(candidatePayload)
         });
 
-        const result = await response.json();
+        let result;
+        const rawText = await response.text();
+        try {
+          result = JSON.parse(rawText);
+        } catch (parseErr) {
+          throw new Error(`Server returned HTTP ${response.status} (${response.statusText}): ${rawText.replace(/<[^>]*>?/gm, '').trim().substring(0, 100)}`);
+        }
 
         if (result.success) {
           successBox.textContent = result.message || 'Registration successful! Redirecting to student dashboard...';

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Online Quiz Management System</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- QRCode.js for generating shareable Quiz QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-light">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand navbar-brand-custom" href="index.html">
+        <i class="bi bi-mortarboard-fill"></i>
+        <span>QuizMaster</span>
+        <span class="brand-badge bg-primary text-white border-0">Administrator</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-4">
+          <li class="nav-item">
+            <a class="nav-link-custom active" href="admin-dashboard.html"><i class="bi bi-speedometer2 me-1"></i> Admin Portal</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link-custom" href="leaderboard.html"><i class="bi bi-trophy me-1"></i> Leaderboard</a>
+          </li>
+        </ul>
+        <div id="navbar-auth-links"></div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4 py-4">
+
+    <!-- Top Admin Banner -->
+    <div class="card-custom p-4 mb-4 bg-white border">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h3 class="fw-bold text-dark mb-1">Administrator Control Center</h3>
+          <p class="text-muted small mb-0">Manage quizzes, author multiple-choice questions, monitor student attempts, and review performance analytics.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary-custom" onclick="openCreateQuizModal()">
+            <i class="bi bi-plus-circle me-1"></i> Create New Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Platform Analytics Overview & Chart -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-8">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="stat-card">
+              <div>
+                <div class="stat-value text-primary" id="stat-total-quizzes">0</div>
+                <div class="stat-label">Total Quizzes Published</div>
+              </div>
+              <div class="stat-icon text-primary"><i class="bi bi-journal-text"></i></div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="stat-card">
+              <div>
+                <div class="stat-value text-success" id="stat-total-students">0</div>
+                <div class="stat-label">Enrolled Students</div>
+              </div>
+              <div class="stat-icon text-success"><i class="bi bi-people"></i></div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="stat-card">
+              <div>
+                <div class="stat-value text-warning" id="stat-total-attempts">0</div>
+                <div class="stat-label">Total Quiz Attempts</div>
+              </div>
+              <div class="stat-icon text-warning"><i class="bi bi-card-checklist"></i></div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="stat-card">
+              <div>
+                <div class="stat-value text-info" id="stat-avg-score">0%</div>
+                <div class="stat-label">Global Average Score</div>
+              </div>
+              <div class="stat-icon text-info"><i class="bi bi-speedometer"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart.js Doughnut for Pass Rate -->
+      <div class="col-lg-4">
+        <div class="card-custom h-100 p-3 d-flex flex-column align-items-center justify-content-center">
+          <h6 class="fw-bold text-muted small mb-2">Student Pass / Fail Ratio</h6>
+          <div style="position: relative; width: 100%; max-width: 220px; height: 180px;">
+            <canvas id="passRateChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs for Modules -->
+    <ul class="nav nav-pills mb-4 gap-2" id="adminTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active rounded-pill px-4" id="quizzes-tab" data-bs-toggle="pill" data-bs-target="#tab-quizzes" type="button" role="tab">
+          <i class="bi bi-journal-bookmark me-1"></i> Manage Quizzes
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link rounded-pill px-4" id="students-tab" data-bs-toggle="pill" data-bs-target="#tab-students" type="button" role="tab">
+          <i class="bi bi-people me-1"></i> Registered Students
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link rounded-pill px-4" id="attempts-tab" data-bs-toggle="pill" data-bs-target="#tab-attempts" type="button" role="tab">
+          <i class="bi bi-clock-history me-1"></i> Attempts & Results Audit
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="adminTabsContent">
+
+      <!-- 1. QUIZZES MANAGEMENT TAB -->
+      <div class="tab-pane fade show active" id="tab-quizzes" role="tabpanel">
+        <div class="card-custom">
+          <div class="card-custom-header">
+            <h5 class="fw-bold mb-0">System Quizzes Bank</h5>
+            <button class="btn btn-sm btn-primary-custom" onclick="openCreateQuizModal()">
+              <i class="bi bi-plus-lg me-1"></i> Add Quiz
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 70px;">ID</th>
+                  <th>Quiz Title & Description</th>
+                  <th>Duration</th>
+                  <th>Total Marks</th>
+                  <th>Questions</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-quizzes-tbody">
+                <tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. REGISTERED CANDIDATES TAB -->
+      <div class="tab-pane fade" id="tab-students" role="tabpanel">
+        <div class="card-custom">
+          <div class="card-custom-header">
+            <div>
+              <h5 class="fw-bold mb-0">Registered Examination Candidates</h5>
+              <p class="text-muted small mb-0">Complete academic profiles, contact records, and login audit tracking stored in MySQL</p>
+            </div>
+            <div style="max-width: 340px; width: 100%;">
+              <input type="text" class="form-control form-control-sm" placeholder="Search by name, roll no, college, branch..." oninput="handleStudentSearch(this)">
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 60px;">ID</th>
+                  <th>Candidate & Roll No</th>
+                  <th>Contact Information</th>
+                  <th>College & Branch</th>
+                  <th>Year / CGPA</th>
+                  <th>Login Tracking</th>
+                  <th>Quiz Performance</th>
+                  <th class="text-end">Candidate Profile</th>
+                </tr>
+              </thead>
+              <tbody id="admin-students-tbody">
+                <tr><td colspan="8" class="text-center py-4 text-muted">Loading candidates...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. ATTEMPTS AUDIT TAB -->
+      <div class="tab-pane fade" id="tab-attempts" role="tabpanel">
+        <div class="card-custom">
+          <div class="card-custom-header">
+            <h5 class="fw-bold mb-0">All Student Exam Attempts & Grades</h5>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 70px;">Attempt #</th>
+                  <th>Student</th>
+                  <th>Quiz Title</th>
+                  <th>Marks</th>
+                  <th>Percentage</th>
+                  <th>Date</th>
+                  <th>Review</th>
+                </tr>
+              </thead>
+              <tbody id="admin-attempts-tbody">
+                <tr><td colspan="7" class="text-center py-4 text-muted">Loading attempts...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Create / Edit Quiz Modal -->
+  <div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="quizModalTitle">Create New Quiz</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="quizForm" onsubmit="event.preventDefault(); saveQuiz();">
+            <input type="hidden" id="quiz-id-field">
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">Quiz Title</label>
+              <input type="text" class="form-control" id="quiz-title-input" required placeholder="e.g. Java Core Fundamentals">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">Description</label>
+              <textarea class="form-control" id="quiz-desc-input" rows="3" placeholder="Brief outline of concepts tested..."></textarea>
+            </div>
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold small">Duration (Minutes)</label>
+                <input type="number" class="form-control" id="quiz-duration-input" required min="1" value="10">
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold small">Total Marks</label>
+                <input type="number" class="form-control" id="quiz-marks-input" required min="1" value="50">
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary-custom" onclick="saveQuiz()">Save Quiz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Question Bank Manager Modal (for a specific quiz, up to 100 questions) -->
+  <div class="modal fade" id="questionsManagerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header">
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="modal-title fw-bold mb-0">Manage Quiz Questions</h5>
+              <span class="badge bg-primary px-2 py-1" id="questions-count-badge">0 / 100 Questions</span>
+            </div>
+            <div class="small text-muted" id="questionModalQuizTitle">Quiz Title</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 p-3 bg-light rounded border">
+            <div>
+              <span class="fw-bold text-dark d-block">Multiple Choice Questions (Max 100)</span>
+              <span class="small text-muted">Add questions manually or auto-scale the question bank up to 100 questions</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <!-- Scale up to 100 Questions Dropdown -->
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                  <i class="bi bi-magic me-1"></i> Quick Scale Questions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                  <li><h6 class="dropdown-header">Auto-Populate Bank</h6></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(10)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 10 Questions</a></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(25)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 25 Questions</a></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(50)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 50 Questions</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item fw-bold text-success" href="javascript:void(0)" onclick="quickScaleQuestions(100)"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Scale to 100 Questions (Max)</a></li>
+                </ul>
+              </div>
+              <button id="btn-add-question-modal" class="btn btn-sm btn-primary-custom" onclick="openAddQuestionModal()">
+                <i class="bi bi-plus-lg me-1"></i> Add Question
+              </button>
+            </div>
+          </div>
+          <div id="questions-list-container">
+            <!-- Questions rendered here -->
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Question Add / Edit Modal -->
+  <div class="modal fade" id="questionEditorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="questionEditorModalTitle">Add New Question</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="singleQuestionForm" onsubmit="event.preventDefault(); saveQuestion();">
+            <input type="hidden" id="question-id-field">
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">Question Text</label>
+              <textarea class="form-control" id="q-text-input" rows="3" required placeholder="Enter question statement..."></textarea>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold small">Option A</label>
+              <input type="text" class="form-control" id="q-optA-input" required placeholder="Option A text">
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold small">Option B</label>
+              <input type="text" class="form-control" id="q-optB-input" required placeholder="Option B text">
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold small">Option C</label>
+              <input type="text" class="form-control" id="q-optC-input" required placeholder="Option C text">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">Option D</label>
+              <input type="text" class="form-control" id="q-optD-input" required placeholder="Option D text">
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold small">Correct Answer</label>
+              <select class="form-select" id="q-correct-select" required>
+                <option value="A">Option A</option>
+                <option value="B">Option B</option>
+                <option value="C">Option C</option>
+                <option value="D">Option D</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary-custom" onclick="saveQuestion()">Save Question</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Quiz & QR Code Modal -->
+  <div class="modal fade" id="shareQuizModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header border-bottom">
+          <div>
+            <h5 class="modal-title fw-bold text-dark"><i class="bi bi-qr-code text-primary me-2"></i>Share Quiz Assessment</h5>
+            <div class="small text-muted" id="shareQuizTitle">Quiz Title</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center p-4">
+          <!-- Notification Alert for fresh creation -->
+          <div id="quiz-created-badge" class="alert alert-success d-flex align-items-center justify-content-center gap-2 mb-3 py-2 small">
+            <i class="bi bi-check-circle-fill"></i> Quiz Created! Share the link or QR code below with students.
+          </div>
+
+          <!-- QR Code Canvas / Container -->
+          <div class="p-3 bg-white border rounded-3 d-inline-block shadow-sm mb-3">
+            <div id="qrcode-container" class="d-flex align-items-center justify-content-center" style="min-width: 200px; min-height: 200px; margin: 0 auto;">
+              <!-- QR Code generated here -->
+            </div>
+            <div class="small text-muted mt-2 fw-semibold"><i class="bi bi-camera me-1"></i> Scan with mobile camera to attempt</div>
+          </div>
+
+          <!-- Shareable Link with Copy Button -->
+          <div class="mb-3 text-start">
+            <label class="form-label small fw-semibold text-dark">Shareable Student Link</label>
+            <div class="input-group">
+              <input type="text" id="share-quiz-url-input" class="form-control form-control-sm" readonly>
+              <button class="btn btn-primary-custom btn-sm px-3" onclick="copyQuizLink()">
+                <i class="bi bi-clipboard me-1" id="copy-btn-icon"></i> <span id="copy-btn-text">Copy Link</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap justify-content-center gap-2 pt-1">
+            <a id="share-direct-open-btn" href="#" target="_blank" class="btn btn-sm btn-outline-custom">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open Quiz
+            </a>
+            <button class="btn btn-sm btn-outline-secondary" onclick="downloadQRCode()">
+              <i class="bi bi-download me-1"></i> Download QR
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="openQuestionsFromShare()">
+              <i class="bi bi-list-check me-1"></i> Add / Manage Questions
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Candidate Full Profile & Login Audit Trail Modal ("Everything About That Person") -->
+  <div class="modal fade" id="candidateDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header bg-light border-bottom">
+          <div class="d-flex align-items-center gap-2">
+            <div class="stat-icon" style="width: 40px; height: 40px; font-size: 1.2rem;">
+              <i class="bi bi-person-vcard text-primary"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold mb-0" id="cand-modal-name">Candidate Full Record</h5>
+              <span class="text-muted small" id="cand-modal-id">Candidate ID: #--</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- Overview Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="p-3 rounded-3 border bg-white h-100 shadow-sm">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-fill me-1"></i> Personal Identity</h6>
+                <ul class="list-unstyled small mb-0">
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Full Name:</strong> <span id="cand-detail-name" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Email:</strong> <span id="cand-detail-email" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Phone:</strong> <span id="cand-detail-phone" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Date of Birth:</strong> <span id="cand-detail-dob" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Gender:</strong> <span id="cand-detail-gender" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">City / State:</strong> <span id="cand-detail-citystate" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Address:</strong> <span id="cand-detail-address" class="fw-semibold text-truncate" style="max-width: 180px;">--</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="p-3 rounded-3 border bg-white h-100 shadow-sm">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-mortarboard me-1"></i> Academic Profile</h6>
+                <ul class="list-unstyled small mb-0">
+                  <li class="py-1"><strong class="text-muted">Institution:</strong><br><span id="cand-detail-institution" class="fw-semibold text-dark">--</span></li>
+                  <li class="py-1"><strong class="text-muted">Department:</strong><br><span id="cand-detail-department" class="fw-semibold text-dark">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Roll Number:</strong> <span id="cand-detail-roll" class="fw-semibold text-primary">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Degree:</strong> <span id="cand-detail-degree" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">Year of Study:</strong> <span id="cand-detail-year" class="fw-semibold">--</span></li>
+                  <li class="py-1 d-flex justify-content-between"><strong class="text-muted">CGPA / %:</strong> <span id="cand-detail-cgpa" class="badge bg-success-subtle text-success">--</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="p-3 rounded-3 border bg-white h-100 shadow-sm">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-check me-1"></i> Login & Session Audit</h6>
+                <div class="card p-2 mb-2 bg-light border-0 small">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Total Login Count:</span>
+                    <span class="badge bg-primary fs-6" id="cand-detail-logincount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Last Login Time:</span>
+                    <span class="fw-semibold text-dark" id="cand-detail-lastlogin">--</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Last IP Host:</span>
+                    <span class="badge bg-secondary-subtle text-secondary" id="cand-detail-lastip">127.0.0.1</span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="text-muted">Account Status:</span>
+                    <span class="badge bg-success" id="cand-detail-status">ACTIVE</span>
+                  </div>
+                </div>
+                <div class="p-2 rounded bg-light border small">
+                  <strong class="text-muted d-block mb-1">Candidate Bio:</strong>
+                  <span id="cand-detail-bio" class="text-muted fst-italic">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Login History Table -->
+          <div class="card-custom">
+            <div class="card-custom-header py-2">
+              <h6 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history me-1 text-primary"></i> Login Session Trail (MySQL: <code>candidate_login_history</code>)</h6>
+              <span class="badge bg-light text-muted border" id="cand-logins-badge">0 Logins Recorded</span>
+            </div>
+            <div class="table-responsive" style="max-height: 240px; overflow-y: auto;">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>#</th>
+                    <th>Timestamp</th>
+                    <th>IP Address</th>
+                    <th>Browser / User Agent</th>
+                    <th>Login Status</th>
+                  </tr>
+                </thead>
+                <tbody id="cand-logins-tbody">
+                  <tr><td colspan="5" class="text-center py-3 text-muted">Loading candidate login sessions...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close Record</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer-custom mt-5">
+    <div class="container text-center text-muted small">
+      Online Quiz Management System • Administrator Control Panel
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
+
