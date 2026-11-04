@@ -192,6 +192,14 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
             return;
         }
 
+        if (path.matches("^/api/admin/quizzes/\\d+/generate-questions$") && "POST".equals(method)) {
+            int quizId = Integer.parseInt(path.split("/")[4]);
+            int count = parseInt(bodyMap.get("count"), 50);
+            ApiResponse<?> res = adminController.generateBulkQuestions(currentUser, quizId, count);
+            sendJsonResponse(out, res.isSuccess() ? 200 : 400, res.isSuccess() ? "OK" : "Bad Request", res);
+            return;
+        }
+
         if ("/api/admin/questions".equals(path) && "POST".equals(method)) {
             int quizId = parseInt(bodyMap.get("quizId"), 0);
             String text = (String) bodyMap.get("questionText");

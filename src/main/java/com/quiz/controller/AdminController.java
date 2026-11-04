@@ -24,12 +24,12 @@ import java.util.Map;
 
 /**
  * Controller handling Administrator management operations:
- * - Authoring, updating, and deleting Quizzes
- * - Authoring, editing, and deleting Questions
+ * - Authoring, updating, and deleting Quizzes (supporting up to 100 questions)
+ * - Authoring, editing, deleting, and bulk generating Questions up to 100
  * - Reviewing student records and exam attempts
  * - Viewing analytics and exporting text reports
  */
-@Author(name = "Antigravity Team", date = "2026-11-03", version = "1.0.0")
+@Author(name = "Antigravity Team", date = "2026-11-04", version = "1.1.0")
 @RoleRequired("ADMIN")
 public class AdminController {
 
@@ -91,7 +91,7 @@ public class AdminController {
         }
     }
 
-    // Question Management
+    // Question Management (Supports up to 100 questions)
     @AuditLog(action = "ADMIN_ADD_QUESTION")
     public ApiResponse<?> addQuestion(User user, int quizId, String text, String optA, String optB, String optC, String optD, String correct) {
         if (!checkAdmin(user)) return ApiResponse.error("Access Denied: Administrator role required.");
@@ -99,6 +99,22 @@ public class AdminController {
             Question q = quizService.addQuestionToQuiz(quizId, text, optA, optB, optC, optD, correct);
             return ApiResponse.success("Question added successfully", q);
         } catch (ResourceNotFoundException | DatabaseException | IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @AuditLog(action = "ADMIN_BULK_GENERATE_QUESTIONS")
+    public ApiResponse<?> generateBulkQuestions(User user, int quizId, int targetTotal) {
+        if (!checkAdmin(user)) return ApiResponse.error("Access Denied: Administrator role required.");
+        try {
+            int added = quizService.generateQuestionsUpTo(quizId, Math.min(100, Math.max(1, targetTotal)));
+            Quiz updatedQuiz = quizService.getQuizWithQuestions(quizId);
+            Map<String, Object> data = new HashMap<>();
+            data.put("addedCount", added);
+            data.put("totalQuestions", updatedQuiz.getQuestions().size());
+            data.put("quizId", quizId);
+            return ApiResponse.success("Questions bank scaled to " + updatedQuiz.getQuestions().size() + "/100 questions successfully!", data);
+        } catch (ResourceNotFoundException | DatabaseException e) {
             return ApiResponse.error(e.getMessage());
         }
     }
@@ -186,4 +202,3 @@ public class AdminController {
         return ApiResponse.success(reports);
     }
 }
-

@@ -360,14 +360,41 @@ p, span, li, td {
   color: #ffffff;
 }
 
-/* Question Palette */
+/* Question Palette (Scalable up to 100 Questions) */
 .palette-btn {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+  color: var(--navy-muted);
+  transition: all 0.15s ease;
+}
+
+#question-palette::-webkit-scrollbar {
+  width: 6px;
+}
+
+#question-palette::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+#question-palette::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+#question-palette::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
   align-items: center;
   justify-content: center;
   margin: 0.25rem;

@@ -88,17 +88,30 @@
         </div>
       </div>
 
-      <!-- Right Column: Question Navigation Palette -->
+      <!-- Right Column: Question Navigation Palette (Scales up to 100 MCQs) -->
       <div class="col-lg-4">
         <div class="card-custom sticky-top" style="top: 80px;">
           <div class="card-custom-header">
             <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Question Palette</h6>
+            <span class="badge bg-light text-dark border small" id="palette-stats-badge">100 MCQs</span>
           </div>
           <div class="card-custom-body p-3">
-            <p class="small text-muted mb-3">Jump directly to any question by clicking its number:</p>
+            <!-- Palette Filter Buttons -->
+            <div class="d-flex gap-1 mb-2">
+              <button class="btn btn-xs btn-outline-primary active flex-fill py-1 small" id="filter-btn-all" onclick="filterPaletteView('all')">All</button>
+              <button class="btn btn-xs btn-outline-success flex-fill py-1 small" id="filter-btn-answered" onclick="filterPaletteView('answered')">Answered</button>
+              <button class="btn btn-xs btn-outline-secondary flex-fill py-1 small" id="filter-btn-unanswered" onclick="filterPaletteView('unanswered')">Pending</button>
+            </div>
 
-            <div id="question-palette" class="d-flex flex-wrap mb-3">
-              <!-- Numbers generated dynamically -->
+            <!-- Quick Jump Input for large tests (up to 100 questions) -->
+            <div class="input-group input-group-sm mb-3">
+              <span class="input-group-text bg-light text-muted">Jump to Q#</span>
+              <input type="number" id="jump-question-input" class="form-control" min="1" placeholder="1-100" onkeydown="if(event.key==='Enter') jumpToQuestionInput()">
+              <button class="btn btn-outline-primary" type="button" onclick="jumpToQuestionInput()">Go</button>
+            </div>
+
+            <div id="question-palette" class="d-flex flex-wrap mb-3" style="max-height: 280px; overflow-y: auto;">
+              <!-- Numbers generated dynamically up to 100 -->
             </div>
 
             <!-- Legend -->

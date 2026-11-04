@@ -84,9 +84,12 @@ function updateTimerDisplay() {
   const timerBadge = document.getElementById('quiz-timer');
   if (!timerBadge) return;
 
-  const mins = Math.floor(remainingSeconds / 60);
+  const hrs = Math.floor(remainingSeconds / 3600);
+  const mins = Math.floor((remainingSeconds % 3600) / 60);
   const secs = remainingSeconds % 60;
-  const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const formatted = hrs > 0 
+      ? `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+      : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   timerBadge.innerHTML = `<i class="bi bi-clock me-1"></i> ${formatted}`;
 
   // If under 1 minute, highlight red
@@ -97,9 +100,16 @@ function updateTimerDisplay() {
   }
 }
 
+let activePaletteFilter = 'all';
+
 function renderQuestionPalette() {
   const paletteContainer = document.getElementById('question-palette');
+  const statsBadge = document.getElementById('palette-stats-badge');
   if (!paletteContainer) return;
+
+  if (statsBadge) {
+    statsBadge.innerText = `${currentQuestions.length} Questions`;
+  }
 
   paletteContainer.innerHTML = '';
   currentQuestions.forEach((q, idx) => {
@@ -108,9 +118,54 @@ function renderQuestionPalette() {
     btn.className = 'palette-btn unanswered';
     btn.id = `palette-btn-${idx}`;
     btn.innerText = idx + 1;
+    btn.title = `Question ${idx + 1}`;
     btn.onclick = () => showQuestion(idx);
     paletteContainer.appendChild(btn);
   });
+
+  applyPaletteFilter();
+}
+
+function filterPaletteView(type) {
+  activePaletteFilter = type;
+  ['all', 'answered', 'unanswered'].forEach(t => {
+    const b = document.getElementById(`filter-btn-${t}`);
+    if (b) {
+      if (t === type) {
+        b.className = t === 'answered' ? 'btn btn-xs btn-success flex-fill py-1 small' : (t === 'unanswered' ? 'btn btn-xs btn-secondary flex-fill py-1 small' : 'btn btn-xs btn-primary flex-fill py-1 small');
+      } else {
+        b.className = t === 'answered' ? 'btn btn-xs btn-outline-success flex-fill py-1 small' : (t === 'unanswered' ? 'btn btn-xs btn-outline-secondary flex-fill py-1 small' : 'btn btn-xs btn-outline-primary flex-fill py-1 small');
+      }
+    }
+  });
+  applyPaletteFilter();
+}
+
+function applyPaletteFilter() {
+  currentQuestions.forEach((q, idx) => {
+    const btn = document.getElementById(`palette-btn-${idx}`);
+    if (!btn) return;
+    const isAns = !!answersMap[q.id];
+    if (activePaletteFilter === 'all') {
+      btn.style.display = 'inline-flex';
+    } else if (activePaletteFilter === 'answered') {
+      btn.style.display = isAns ? 'inline-flex' : 'none';
+    } else if (activePaletteFilter === 'unanswered') {
+      btn.style.display = !isAns ? 'inline-flex' : 'none';
+    }
+  });
+}
+
+function jumpToQuestionInput() {
+  const input = document.getElementById('jump-question-input');
+  if (!input) return;
+  const num = parseInt(input.value);
+  if (!isNaN(num) && num >= 1 && num <= currentQuestions.length) {
+    showQuestion(num - 1);
+    input.value = '';
+  } else {
+    showToast(`Enter a number between 1 and ${currentQuestions.length}`, 'error');
+  }
 }
 
 function showQuestion(index) {
@@ -161,11 +216,17 @@ function showQuestion(index) {
   }
 
   updatePaletteHighlight();
+  applyPaletteFilter();
+  const activeBtn = document.getElementById(`palette-btn-${currentIndex}`);
+  if (activeBtn) {
+    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
 }
 
 function handleOptionSelect(questionId, optionKey) {
   answersMap[questionId] = optionKey;
   updatePaletteHighlight();
+  applyPaletteFilter();
   updateSummaryBadge();
 }
 

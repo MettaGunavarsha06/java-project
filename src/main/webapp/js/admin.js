@@ -90,6 +90,9 @@ async function loadQuizzesTable() {
       <td><span class="badge bg-primary">${q.totalMarks} Marks</span></td>
       <td><span class="badge bg-info text-dark">${q.questionCount || (q.questions ? q.questions.length : 0)} Questions</span></td>
       <td class="text-end">
+        <button class="btn btn-sm btn-outline-info me-1" title="Share Quiz Link & QR Code" onclick="openShareQuizModal(${q.id}, '${escapeHtml(q.title)}', false)">
+          <i class="bi bi-qr-code me-1"></i> Share / QR
+        </button>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="manageQuestions(${q.id}, '${escapeHtml(q.title)}')">
           <i class="bi bi-list-check me-1"></i> Questions
         </button>
@@ -162,10 +165,19 @@ async function saveQuiz() {
   }
 
   if (res.success) {
-    showToast(id ? 'Quiz updated' : 'Quiz created', 'success');
+    const isNew = !id;
     bootstrap.Modal.getInstance(document.getElementById('quizModal')).hide();
     loadQuizzesTable();
     loadDashboardStats();
+
+    if (isNew && res.data && res.data.id) {
+      showToast('Quiz created! Showing shareable link & QR code', 'success');
+      setTimeout(() => {
+        openShareQuizModal(res.data.id, title, true);
+      }, 300);
+    } else {
+      showToast('Quiz updated successfully', 'success');
+    }
   } else {
     alert(res.message || 'Error saving quiz');
   }
@@ -208,6 +220,8 @@ async function manageQuestions(quizId, quizTitle) {
 async function loadQuestionsForActiveQuiz() {
   const res = await apiRequest(`/quizzes/${activeQuizIdForQuestions}`);
   const container = document.getElementById('questions-list-container');
+  const countBadge = document.getElementById('questions-count-badge');
+  const addBtn = document.getElementById('btn-add-question-modal');
   if (!container) return;
 
   if (!res.success || !res.data) {
@@ -216,8 +230,19 @@ async function loadQuestionsForActiveQuiz() {
   }
 
   const questions = res.data.questions || [];
+  if (countBadge) {
+    countBadge.innerText = `${questions.length} / 100 Questions`;
+    if (questions.length >= 100) {
+      countBadge.className = 'badge bg-danger px-2 py-1';
+      if (addBtn) addBtn.disabled = true;
+    } else {
+      countBadge.className = 'badge bg-primary px-2 py-1';
+      if (addBtn) addBtn.disabled = false;
+    }
+  }
+
   if (questions.length === 0) {
-    container.innerHTML = '<div class="text-center py-4 text-muted">No questions yet for this quiz. Click "+ Add Question" below.</div>';
+    container.innerHTML = '<div class="text-center py-4 text-muted">No questions yet for this quiz. Use "+ Add Question" or "Quick Scale Questions" above.</div>';
     return;
   }
 
@@ -247,6 +272,24 @@ async function loadQuestionsForActiveQuiz() {
       </div>
     </div>
   `).join('');
+}
+
+async function quickScaleQuestions(targetCount) {
+  if (!activeQuizIdForQuestions) return;
+  showToast(`Scaling question bank to ${targetCount} questions...`, 'info');
+
+  const res = await apiRequest(`/admin/quizzes/${activeQuizIdForQuestions}/generate-questions`, {
+    method: 'POST',
+    body: JSON.stringify({ count: targetCount })
+  });
+
+  if (res.success) {
+    showToast(res.message || `Scaled to ${targetCount} questions!`, 'success');
+    await loadQuestionsForActiveQuiz();
+    await loadQuizzesTable();
+  } else {
+    alert(res.message || 'Error scaling questions');
+  }
 }
 
 function openAddQuestionModal() {
@@ -384,5 +427,135 @@ async function loadAttemptsTable() {
       </tr>
     `;
   }).join('');
+}
+
+// ---------------- SHARE & QR CODE FUNCTIONS ----------------
+let currentShareQuizId = null;
+let currentShareQuizTitle = '';
+
+function openShareQuizModal(quizId, quizTitle, isJustCreated = false) {
+  currentShareQuizId = quizId;
+  currentShareQuizTitle = quizTitle;
+
+  document.getElementById('shareQuizTitle').innerText = `${quizTitle} (Quiz #${quizId})`;
+
+  const alertBadge = document.getElementById('quiz-created-badge');
+  if (alertBadge) {
+    if (isJustCreated) {
+      alertBadge.classList.remove('d-none');
+    } else {
+      alertBadge.classList.add('d-none');
+    }
+  }
+
+  // Generate URL
+  const origin = window.location.origin;
+  const quizUrl = `${origin}/quiz-view.html?id=${quizId}`;
+  document.getElementById('share-quiz-url-input').value = quizUrl;
+  document.getElementById('share-direct-open-btn').href = quizUrl;
+
+  // Reset copy button text
+  const copyBtnText = document.getElementById('copy-btn-text');
+  const copyBtnIcon = document.getElementById('copy-btn-icon');
+  if (copyBtnText) copyBtnText.innerText = 'Copy Link';
+  if (copyBtnIcon) copyBtnIcon.className = 'bi bi-clipboard me-1';
+
+  // Render QR Code
+  const qrContainer = document.getElementById('qrcode-container');
+  qrContainer.innerHTML = '';
+
+  try {
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrContainer, {
+        text: quizUrl,
+        width: 190,
+        height: 190,
+        colorDark: "#0f172a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      // Fallback to QR API image
+      const img = document.createElement('img');
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(quizUrl)}`;
+      img.alt = `QR Code for ${quizTitle}`;
+      img.className = 'img-fluid rounded';
+      img.style.maxWidth = '190px';
+      qrContainer.appendChild(img);
+    }
+  } catch (err) {
+    console.warn('QR Code generation error, using fallback image:', err);
+    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(quizUrl)}" alt="QR Code" class="img-fluid rounded" style="max-width:190px;">`;
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('shareQuizModal'));
+  modal.show();
+}
+
+function copyQuizLink() {
+  const input = document.getElementById('share-quiz-url-input');
+  if (!input) return;
+
+  input.select();
+  input.setSelectionRange(0, 99999);
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(input.value).then(() => {
+      onCopySuccess();
+    }).catch(() => {
+      document.execCommand('copy');
+      onCopySuccess();
+    });
+  } else {
+    document.execCommand('copy');
+    onCopySuccess();
+  }
+}
+
+function onCopySuccess() {
+  const copyBtnText = document.getElementById('copy-btn-text');
+  const copyBtnIcon = document.getElementById('copy-btn-icon');
+  if (copyBtnText) copyBtnText.innerText = 'Copied! ✓';
+  if (copyBtnIcon) copyBtnIcon.className = 'bi bi-check2 me-1 text-success';
+  showToast('Quiz link copied to clipboard!', 'success');
+
+  setTimeout(() => {
+    if (copyBtnText) copyBtnText.innerText = 'Copy Link';
+    if (copyBtnIcon) copyBtnIcon.className = 'bi bi-clipboard me-1';
+  }, 3000);
+}
+
+function downloadQRCode() {
+  const qrContainer = document.getElementById('qrcode-container');
+  if (!qrContainer) return;
+
+  const canvas = qrContainer.querySelector('canvas');
+  if (canvas) {
+    const link = document.createElement('a');
+    link.download = `quiz_${currentShareQuizId}_qrcode.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('QR Code downloaded', 'success');
+    return;
+  }
+
+  const img = qrContainer.querySelector('img');
+  if (img && img.src) {
+    const link = document.createElement('a');
+    link.download = `quiz_${currentShareQuizId}_qrcode.png`;
+    link.href = img.src;
+    link.target = '_blank';
+    link.click();
+    showToast('Opening QR Code image', 'info');
+  }
+}
+
+function openQuestionsFromShare() {
+  const shareModal = bootstrap.Modal.getInstance(document.getElementById('shareQuizModal'));
+  if (shareModal) shareModal.hide();
+
+  if (currentShareQuizId) {
+    manageQuestions(currentShareQuizId, currentShareQuizTitle);
+  }
 }
 
