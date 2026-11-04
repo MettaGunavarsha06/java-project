@@ -166,6 +166,17 @@ async function saveQuiz() {
 
   if (res.success) {
     const isNew = !id;
+    // Save locally to persist across Vercel serverless sleep cycles
+    if (res.data) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+        const idx = saved.findIndex(s => s.id === res.data.id);
+        if (idx !== -1) saved[idx] = res.data;
+        else saved.push(res.data);
+        localStorage.setItem('saved_quizzes', JSON.stringify(saved));
+      } catch (e) {}
+    }
+
     bootstrap.Modal.getInstance(document.getElementById('quizModal')).hide();
     loadQuizzesTable();
     loadDashboardStats();

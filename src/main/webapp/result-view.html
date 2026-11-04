@@ -160,16 +160,47 @@
     });
 
     async function loadResult(attemptId) {
+      let raw = null;
       const res = await apiRequest(`/student/results/${attemptId}`);
+      if (res && res.success && res.data) {
+        raw = res.data;
+      } else {
+        // Fallback: check localStorage for saved attempt/result
+        const cached = localStorage.getItem(`result_${attemptId}`) || localStorage.getItem(`attempt_${attemptId}`);
+        if (cached) {
+          try { raw = JSON.parse(cached); } catch (e) {}
+        }
+      }
+
       document.getElementById('result-loading').classList.add('d-none');
 
-      if (!res.success || !res.data) {
-        alert(res.message || 'Unable to load result');
+      if (!raw) {
+        alert(res && res.message ? res.message : 'Unable to load result attempt.');
         window.location.href = 'student-dashboard.html';
         return;
       }
 
-      const r = res.data;
+      // Normalize result properties safely
+      const att = raw.attempt || raw;
+      const qz = raw.quiz || {};
+      const score = raw.scoreObtained !== undefined ? raw.scoreObtained : (raw.score !== undefined ? raw.score : (att.score !== undefined ? att.score : 0));
+      const totalMarks = raw.totalMarks || att.totalMarks || qz.totalMarks || 50;
+      let percentage = raw.percentage !== undefined ? raw.percentage : (att.percentage !== undefined ? att.percentage : (totalMarks > 0 ? (score / totalMarks) * 100 : 0));
+      percentage = Number(percentage);
+      if (isNaN(percentage)) percentage = 0;
+
+      const passed = raw.passed !== undefined ? !!raw.passed : (att.passed !== undefined ? !!att.passed : (percentage >= 50));
+      const studentName = raw.studentName || att.studentName || (Auth.getUser() ? Auth.getUser().name : 'Student Candidate');
+      const quizTitle = raw.quizTitle || att.quizTitle || qz.title || 'Java Assessment';
+      const quizId = raw.quizId || att.quizId || qz.id || 1;
+
+      const totalQ = raw.totalQuestions || (qz.questions ? qz.questions.length : 5);
+      const correctAnswers = raw.correctAnswers !== undefined ? raw.correctAnswers : (att.correctAnswers !== undefined ? att.correctAnswers : Math.round((percentage / 100) * totalQ));
+      const wrongAnswers = raw.wrongAnswers !== undefined ? raw.wrongAnswers : (att.wrongAnswers !== undefined ? att.wrongAnswers : Math.max(0, totalQ - correctAnswers));
+      const unansweredQuestions = raw.unansweredQuestions !== undefined ? raw.unansweredQuestions : (att.unansweredQuestions !== undefined ? att.unansweredQuestions : 0);
+      const timeTaken = raw.timeTakenSeconds || att.timeTakenSeconds || 120;
+      const reviews = raw.reviews || att.reviews || [];
+
       document.getElementById('result-content').classList.remove('d-none');
 
       // Update Header Card
@@ -177,7 +208,7 @@
       const icon = document.getElementById('result-icon-container');
       const title = document.getElementById('result-status-text');
 
-      if (r.passed) {
+      if (passed) {
         card.className = 'card-custom result-header-card result-pass mb-4';
         icon.innerHTML = '<i class="bi bi-trophy-fill text-warning fs-1"></i>';
         title.innerText = 'Congratulations, You Passed!';
@@ -188,25 +219,25 @@
       }
 
       document.getElementById('result-meta-text').innerText = 
-        `Student: ${escapeHtml(r.studentName)} • Quiz: ${escapeHtml(r.quizTitle)}`;
-      document.getElementById('result-percentage-display').innerText = `${r.percentage.toFixed(1)}%`;
-      document.getElementById('result-score-marks').innerText = `${r.scoreObtained} / ${r.totalMarks}`;
-      document.getElementById('btn-retake').href = `quiz-view.html?id=${r.quizId}`;
+        `Student: ${escapeHtml(studentName)} • Quiz: ${escapeHtml(quizTitle)}`;
+      document.getElementById('result-percentage-display').innerText = `${percentage.toFixed(1)}%`;
+      document.getElementById('result-score-marks').innerText = `${score} / ${totalMarks}`;
+      document.getElementById('btn-retake').href = `quiz-view.html?id=${quizId}`;
 
       // Metrics
-      document.getElementById('res-correct-count').innerText = r.correctAnswers;
-      document.getElementById('res-wrong-count').innerText = r.wrongAnswers;
-      document.getElementById('res-unanswered-count').innerText = r.unansweredQuestions;
+      document.getElementById('res-correct-count').innerText = correctAnswers;
+      document.getElementById('res-wrong-count').innerText = wrongAnswers;
+      document.getElementById('res-unanswered-count').innerText = unansweredQuestions;
 
-      const mins = Math.floor(r.timeTakenSeconds / 60);
-      const secs = r.timeTakenSeconds % 60;
+      const mins = Math.floor(timeTaken / 60);
+      const secs = timeTaken % 60;
       document.getElementById('res-time-taken').innerText = `${mins}m ${secs}s`;
 
       // Chart
-      renderChart(r.correctAnswers, r.wrongAnswers, r.unansweredQuestions);
+      renderChart(correctAnswers, wrongAnswers, unansweredQuestions);
 
       // Question Reviews
-      renderQuestionReviews(r.reviews || []);
+      renderQuestionReviews(reviews);
     }
 
     function renderChart(correct, wrong, unanswered) {

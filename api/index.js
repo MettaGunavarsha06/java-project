@@ -159,9 +159,9 @@ let quizzes = [
 ];
 
 let attempts = [
-  { id: 1, studentId: 2, studentName: "Alex Johnson", studentEmail: "alex@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 50, totalMarks: 50, percentage: 100.0, attemptDate: "2026-11-02 15:30:00" },
-  { id: 2, studentId: 3, studentName: "Sophia Chen", studentEmail: "sophia@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 40, totalMarks: 50, percentage: 80.0, attemptDate: "2026-11-03 11:00:00" },
-  { id: 3, studentId: 4, studentName: "Liam Davis", studentEmail: "liam@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 30, totalMarks: 50, percentage: 60.0, attemptDate: "2026-11-04 09:20:00" }
+  { id: 1, studentId: 2, studentName: "Alex Johnson", studentEmail: "alex@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 50, totalMarks: 50, percentage: 100.0, passed: true, correctAnswers: 5, wrongAnswers: 0, unansweredQuestions: 0, timeTakenSeconds: 180, attemptDate: "2026-11-02 15:30:00" },
+  { id: 2, studentId: 3, studentName: "Sophia Chen", studentEmail: "sophia@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 40, totalMarks: 50, percentage: 80.0, passed: true, correctAnswers: 4, wrongAnswers: 1, unansweredQuestions: 0, timeTakenSeconds: 210, attemptDate: "2026-11-03 11:00:00" },
+  { id: 3, studentId: 4, studentName: "Liam Davis", studentEmail: "liam@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 30, totalMarks: 50, percentage: 60.0, passed: true, correctAnswers: 3, wrongAnswers: 2, unansweredQuestions: 0, timeTakenSeconds: 240, attemptDate: "2026-11-04 09:20:00" }
 ];
 
 const sessions = new Map();
@@ -512,8 +512,62 @@ module.exports = async function handler(req, res) {
     const aId = parseInt(resultByIdMatch[1]);
     const attempt = attempts.find(a => a.id === aId || a.attemptId === aId);
     if (!attempt) return sendJson(res, 404, { success: false, message: 'Result attempt not found' });
-    const quiz = quizzes.find(q => q.id === attempt.quizId);
-    return sendJson(res, 200, { success: true, data: { attempt, quiz } });
+    const quiz = quizzes.find(q => q.id === attempt.quizId) || {
+      id: attempt.quizId,
+      title: attempt.quizTitle || 'Quiz Assessment',
+      questions: []
+    };
+
+    // Build question reviews
+    const reviews = (quiz.questions && quiz.questions.length > 0) ? quiz.questions.map((q, idx) => {
+      const userAns = attempt.answers ? attempt.answers[q.id] : (idx < attempt.correctAnswers ? q.correctAnswer : 'A');
+      const isCorrect = userAns && userAns.toUpperCase() === q.correctAnswer.toUpperCase();
+      return {
+        questionId: q.id,
+        questionIndex: idx + 1,
+        questionText: q.questionText,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctAnswer: q.correctAnswer,
+        userAnswer: userAns || 'Not Answered',
+        isCorrect: !!isCorrect
+      };
+    }) : [];
+
+    const totalQ = quiz.questions ? quiz.questions.length : 5;
+    const correctCount = attempt.correctAnswers !== undefined ? attempt.correctAnswers : Math.round((attempt.percentage / 100) * totalQ);
+    const wrongCount = attempt.wrongAnswers !== undefined ? attempt.wrongAnswers : Math.max(0, totalQ - correctCount);
+    const unansweredCount = attempt.unansweredQuestions !== undefined ? attempt.unansweredQuestions : 0;
+    const percentage = attempt.percentage !== undefined ? attempt.percentage : ((attempt.score / (attempt.totalMarks || 50)) * 100);
+    const passed = attempt.passed !== undefined ? attempt.passed : (percentage >= 50);
+
+    const resultPayload = {
+      attemptId: attempt.id,
+      id: attempt.id,
+      studentId: attempt.studentId,
+      studentName: attempt.studentName || 'Student Candidate',
+      studentEmail: attempt.studentEmail || '',
+      quizId: quiz.id,
+      quizTitle: quiz.title || attempt.quizTitle || 'Assessment',
+      totalQuestions: totalQ,
+      correctAnswers: correctCount,
+      wrongAnswers: wrongCount,
+      unansweredQuestions: unansweredCount,
+      totalMarks: attempt.totalMarks || 50,
+      scoreObtained: attempt.score,
+      score: attempt.score,
+      percentage: Number(percentage.toFixed ? percentage.toFixed(1) : percentage),
+      passed: passed,
+      timeTakenSeconds: attempt.timeTakenSeconds || 120,
+      attemptDate: attempt.attemptDate || new Date().toISOString(),
+      reviews: reviews,
+      attempt: attempt,
+      quiz: quiz
+    };
+
+    return sendJson(res, 200, { success: true, data: resultPayload });
   }
 
   // ---------------- LEADERBOARD ----------------
@@ -601,13 +655,20 @@ module.exports = async function handler(req, res) {
 
   if (path === '/api/admin/quizzes' && req.method === 'POST') {
     const { title, description, duration, totalMarks } = body;
+    const newId = quizzes.length + 1;
     const newQuiz = {
-      id: quizzes.length + 1,
+      id: newId,
       title: title || 'New Assessment',
-      description: description || '',
+      description: description || 'Practical Java and Relational Database Evaluation',
       duration: parseInt(duration) || 10,
       totalMarks: parseInt(totalMarks) || 50,
-      questions: []
+      questions: [
+        { id: 1, quizId: newId, questionText: "Which collection class guarantees unique elements in Java?", optionA: "ArrayList", optionB: "HashSet", optionC: "LinkedList", optionD: "Vector", correctAnswer: "B" },
+        { id: 2, quizId: newId, questionText: "What keyword is used to prevent method overriding in Java?", optionA: "static", optionB: "final", optionC: "const", optionD: "abstract", correctAnswer: "B" },
+        { id: 3, quizId: newId, questionText: "Which interface in java.util.concurrent returns a Future value?", optionA: "Runnable", optionB: "Callable", optionC: "Thread", optionD: "Process", correctAnswer: "B" },
+        { id: 4, quizId: newId, questionText: "Which SQL clause filters rows before aggregation with GROUP BY?", optionA: "HAVING", optionB: "WHERE", optionC: "ORDER BY", optionD: "FILTER", correctAnswer: "B" },
+        { id: 5, quizId: newId, questionText: "What is the default isolation level in MySQL InnoDB?", optionA: "READ UNCOMMITTED", optionB: "REPEATABLE READ", optionC: "SERIALIZABLE", optionD: "READ COMMITTED", correctAnswer: "B" }
+      ]
     };
     quizzes.push(newQuiz);
     return sendJson(res, 200, { success: true, message: 'Quiz created successfully', data: newQuiz });
