@@ -250,3 +250,4 @@ public class DatabaseInitializer {
         System.out.println("[DatabaseInitializer] Initial seed data inserted into MySQL.");
     }
 }
+

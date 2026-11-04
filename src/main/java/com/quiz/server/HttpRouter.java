@@ -283,6 +283,33 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
             return;
         }
 
+        // ---------------- SYSTEM & DATABASE DIAGNOSTIC ROUTES ----------------
+        if ("/api/system/db-status".equals(path) && "GET".equals(method)) {
+            Map<String, Object> dbInfo = new HashMap<>();
+            boolean isFallback = com.quiz.dao.DatabaseConnection.isUsingEmbeddedFallback();
+            dbInfo.put("connected", !isFallback);
+            dbInfo.put("database", "online_quiz_db");
+            dbInfo.put("url", com.quiz.dao.DatabaseConnection.getDbUrl());
+            dbInfo.put("user", com.quiz.dao.DatabaseConnection.getDbUser());
+            dbInfo.put("mode", isFallback ? "EMBEDDED_FALLBACK" : "MYSQL_CONNECTED");
+            dbInfo.put("statusMessage", isFallback 
+                    ? "In-Memory Embedded Persistence Active (MySQL service not responding on port 3306)" 
+                    : "Connected to MySQL Database: online_quiz_db");
+            sendJsonResponse(out, 200, "OK", ApiResponse.success(dbInfo));
+            return;
+        }
+
+        if ("/api/system/reconnect-db".equals(path) && "POST".equals(method)) {
+            boolean connected = com.quiz.dao.DatabaseConnection.reconnect();
+            Map<String, Object> res = new HashMap<>();
+            res.put("connected", connected);
+            res.put("message", connected 
+                    ? "Successfully connected to MySQL database 'online_quiz_db'!" 
+                    : "MySQL server still offline or unreachable on localhost:3306");
+            sendJsonResponse(out, 200, "OK", ApiResponse.success(res));
+            return;
+        }
+
         // Unmatched API endpoint
         sendJsonResponse(out, 404, "Not Found", ApiResponse.error("API endpoint not found: " + path));
     }

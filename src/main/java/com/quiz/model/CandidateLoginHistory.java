@@ -102,3 +102,4 @@ public class CandidateLoginHistory implements Serializable {
         this.loginStatus = loginStatus;
     }
 }
+

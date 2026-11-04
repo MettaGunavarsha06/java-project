@@ -108,6 +108,13 @@ public class DatabaseConnection {
         return DriverManager.getConnection(dbUrl, dbUser, dbPassword);
     }
 
+    public static synchronized boolean reconnect() {
+        probed = false;
+        loadConfiguration();
+        probeDatabaseAvailability();
+        return !useEmbeddedFallback;
+    }
+
     public static boolean isUsingEmbeddedFallback() {
         return useEmbeddedFallback;
     }

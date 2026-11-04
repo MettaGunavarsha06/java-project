@@ -155,7 +155,57 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/**
+ * Live Database Connectivity Status Bar & Auto-Reconnect
+ */
+async function checkDatabaseStatus() {
+  try {
+    const res = await apiRequest('/system/db-status');
+    if (!res.success || !res.data) return;
+
+    let banner = document.getElementById('global-db-status-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'global-db-status-banner';
+      banner.style.cssText = 'position:fixed;bottom:12px;left:16px;z-index:9990;font-size:0.8rem;padding:6px 14px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:flex;align-items:center;gap:8px;backdrop-filter:blur(6px);';
+      document.body.appendChild(banner);
+    }
+
+    if (res.data.connected) {
+      banner.style.background = '#dcfce7';
+      banner.style.color = '#15803d';
+      banner.style.border = '1px solid #86efac';
+      banner.innerHTML = `<i class="bi bi-database-check"></i> <strong>MySQL Active:</strong> ${escapeHtml(res.data.database)}`;
+    } else {
+      banner.style.background = '#fef9c3';
+      banner.style.color = '#854d0e';
+      banner.style.border = '1px solid #fde047';
+      banner.innerHTML = `<i class="bi bi-database-exclamation"></i> <span>Persistence: Embedded In-Memory</span> 
+        <button onclick="reconnectDatabase(this)" class="btn btn-xs btn-outline-warning py-0 px-2 ms-1 rounded-pill" style="font-size:0.75rem;">
+          <i class="bi bi-arrow-repeat"></i> Connect MySQL
+        </button>`;
+    }
+  } catch (err) {
+    // Silent ignore
+  }
+}
+
+async function reconnectDatabase(btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:0.7rem;height:0.7rem;"></span> Connecting...';
+  }
+  const res = await apiRequest('/system/reconnect-db', { method: 'POST' });
+  if (res.success && res.data && res.data.connected) {
+    showToast('Connected to MySQL database online_quiz_db!', 'success');
+  } else {
+    showToast('MySQL server not responding on localhost:3306. Check MySQL service.', 'info');
+  }
+  checkDatabaseStatus();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderNavbar();
+  checkDatabaseStatus();
 });
 
