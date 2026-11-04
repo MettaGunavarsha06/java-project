@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Quiz Assessment | Online Quiz System</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+  <!-- Header / Timer Bar -->
+  <nav class="navbar navbar-custom sticky-top py-2 shadow-sm">
+    <div class="container-fluid px-4">
+      <div class="d-flex align-items-center gap-3">
+        <a class="navbar-brand navbar-brand-custom mb-0 py-0" href="student-dashboard.html">
+          <i class="bi bi-mortarboard-fill"></i>
+          <span>QuizMaster</span>
+        </a>
+        <span class="text-muted d-none d-md-inline">|</span>
+        <span class="fw-bold text-dark d-none d-md-inline" id="quiz-title">Loading Quiz...</span>
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        <span class="badge bg-light text-dark border d-none d-sm-inline" id="quiz-total-marks">50 Marks</span>
+        <!-- Live Countdown Timer -->
+        <div id="quiz-timer" class="quiz-timer-badge">
+          <i class="bi bi-clock me-1"></i> 00:00
+        </div>
+        <button type="button" class="btn btn-sm btn-danger px-3 fw-semibold" onclick="openSubmitModal()">
+          <i class="bi bi-send-check me-1"></i> Submit Quiz
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Quiz Taking Body -->
+  <div class="container py-4 flex-grow-1">
+    <div class="row g-4">
+
+      <!-- Left Column: Active MCQ Question Card -->
+      <div class="col-lg-8">
+        <div class="card-custom">
+          <!-- Card Header -->
+          <div class="card-custom-header">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-primary px-3 py-1 fs-6">Question <span id="current-question-num">1</span> of <span id="total-questions-count">5</span></span>
+              <span class="badge bg-light text-muted border" id="answered-count-badge">0 / 5 Answered</span>
+            </div>
+            <button class="btn btn-sm btn-link text-muted text-decoration-none" onclick="clearCurrentAnswer()">
+              <i class="bi bi-arrow-counterclockwise me-1"></i> Clear Answer
+            </button>
+          </div>
+
+          <!-- Question Body -->
+          <div class="card-custom-body p-4">
+            <h5 class="fw-bold text-dark lh-base mb-4" id="question-text">
+              Loading question...
+            </h5>
+
+            <!-- 4 MCQ Options Container -->
+            <div id="options-container">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+
+          <!-- Action Buttons Bar -->
+          <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center border-top">
+            <button id="btn-prev" class="btn btn-outline-custom" onclick="prevQuestion()" disabled>
+              <i class="bi bi-chevron-left me-1"></i> Previous
+            </button>
+
+            <div class="d-flex gap-2">
+              <button id="btn-next" class="btn btn-primary-custom" onclick="nextQuestion()">
+                Next Question <i class="bi bi-chevron-right ms-1"></i>
+              </button>
+              <button id="btn-review-submit" class="btn btn-success d-none" onclick="openSubmitModal()">
+                Review & Submit <i class="bi bi-check2-circle ms-1"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Question Navigation Palette -->
+      <div class="col-lg-4">
+        <div class="card-custom sticky-top" style="top: 80px;">
+          <div class="card-custom-header">
+            <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Question Palette</h6>
+          </div>
+          <div class="card-custom-body p-3">
+            <p class="small text-muted mb-3">Jump directly to any question by clicking its number:</p>
+
+            <div id="question-palette" class="d-flex flex-wrap mb-3">
+              <!-- Numbers generated dynamically -->
+            </div>
+
+            <!-- Legend -->
+            <div class="border-top pt-3 small">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="palette-btn answered" style="width: 22px; height: 22px; cursor: default;"></span>
+                <span class="text-muted">Answered</span>
+              </div>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="palette-btn unanswered" style="width: 22px; height: 22px; cursor: default;"></span>
+                <span class="text-muted">Not Answered</span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="palette-btn active" style="width: 22px; height: 22px; cursor: default;"></span>
+                <span class="text-muted">Current Question</span>
+              </div>
+            </div>
+
+            <!-- Final Submit in Palette -->
+            <div class="mt-4 pt-3 border-top">
+              <button class="btn btn-primary-custom w-100 py-2" onclick="openSubmitModal()">
+                <i class="bi bi-check2-square me-1"></i> Finish & Submit Exam
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Submit Confirmation Modal -->
+  <div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-labelledby="confirmSubmitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold" id="confirmSubmitModalLabel">
+            <i class="bi bi-question-circle text-primary me-2"></i> Confirm Quiz Submission
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="text-dark mb-3">Are you ready to submit your quiz? Once submitted, your answers will be automatically evaluated.</p>
+
+          <div class="card bg-light border p-3 mb-3">
+            <div class="row text-center">
+              <div class="col-4 border-end">
+                <div class="fw-bold fs-5 text-dark" id="modal-total-q">0</div>
+                <div class="small text-muted">Total Questions</div>
+              </div>
+              <div class="col-4 border-end">
+                <div class="fw-bold fs-5 text-success" id="modal-answered-q">0</div>
+                <div class="small text-muted">Answered</div>
+              </div>
+              <div class="col-4">
+                <div class="fw-bold fs-5 text-warning" id="modal-unanswered-q">0</div>
+                <div class="small text-muted">Unanswered</div>
+              </div>
+            </div>
+          </div>
+
+          <p class="small text-muted mb-0">
+            <i class="bi bi-info-circle me-1"></i> Unanswered questions will receive 0 marks.
+          </p>
+        </div>
+        <div class="modal-footer border-top bg-light">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">
+            Return to Questions
+          </button>
+          <button type="button" class="btn btn-success px-4" onclick="confirmSubmit()">
+            <i class="bi bi-check-lg me-1"></i> Yes, Submit Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/quiz.js"></script>
+</body>
+</html>
+
