@@ -1,13 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "node -e \"const fs=require('fs'); fs.cpSync('src/main/webapp', 'public', {recursive:true}); console.log('Build completed');\"",
+  "buildCommand": "node -e \"const fs=require('fs'); fs.cpSync('src/main/webapp', 'public', {recursive:true});\"",
   "outputDirectory": "public",
-  "cleanUrls": true,
-  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/index.js?__route=:path*"
+      "destination": "/api/index.js"
     }
   ]
 }

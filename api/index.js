@@ -224,16 +224,31 @@ module.exports = async function handler(req, res) {
     path = '/api/' + url.searchParams.get('__path').replace(/^\/+/, '');
   } else if (req.headers['x-matched-path']) {
     path = req.headers['x-matched-path'].split('?')[0];
-  } else if (path === '/api/index' || path === '/api' || path === '/api/index.js') {
+  } else if (req.headers['x-vercel-matched-path']) {
+    path = req.headers['x-vercel-matched-path'].split('?')[0];
+  } else if (req.headers['x-invoke-path']) {
+    path = req.headers['x-invoke-path'].split('?')[0];
+  }
+
+  // Fallback if path resolved to index.js or api base
+  if (path === '/api/index' || path === '/api' || path === '/api/index.js' || path === '/api/') {
     if (url.searchParams.has('path')) {
       path = '/api/' + url.searchParams.get('path').replace(/^\/+/, '');
+    } else if (req.headers['x-now-route-matches']) {
+      try {
+        const matchParams = new URLSearchParams(req.headers['x-now-route-matches']);
+        const matched = matchParams.get('path') || matchParams.get('1');
+        if (matched) {
+          path = '/api/' + decodeURIComponent(matched).replace(/^\/+/, '');
+        }
+      } catch (e) {}
     }
   }
 
-  path = path.replace(/\/+$/, '');
+  path = path.replace(/\/+$/, '') || '/';
 
   // API Root Status Check
-  if (path === '/api' || path === '') {
+  if (path === '/api' || path === '' || path === '/api/index' || path === '/api/index.js') {
     return sendJson(res, 200, {
       success: true,
       service: "Online Quiz Management System API",
@@ -647,5 +662,13 @@ module.exports = async function handler(req, res) {
   }
 
   // Unhandled API route
-  return sendJson(res, 404, { success: false, message: `Endpoint not found: ${path}` });
+  return sendJson(res, 404, {
+    success: false,
+    message: `Endpoint not found: ${path}`,
+    debug: {
+      url: req.url,
+      matchedPath: req.headers['x-matched-path'] || null,
+      routeMatches: req.headers['x-now-route-matches'] || null
+    }
+  });
 };
