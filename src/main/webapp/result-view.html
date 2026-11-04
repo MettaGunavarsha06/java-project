@@ -198,14 +198,14 @@
       const quizTitle = raw.quizTitle || att.quizTitle || qz.title || 'Java Assessment';
       const quizId = raw.quizId || att.quizId || qz.id || 1;
 
-      const totalQ = raw.totalQuestions || (qz.questions ? qz.questions.length : 5);
+      const reviews = raw.reviews || att.reviews || [];
+      const totalQ = raw.totalQuestions || (reviews && reviews.length ? reviews.length : (qz.questions ? qz.questions.length : 10));
       const correctAnswers = raw.correctAnswers !== undefined ? raw.correctAnswers : (att.correctAnswers !== undefined ? att.correctAnswers : Math.round((percentage / 100) * totalQ));
       const wrongAnswers = raw.wrongAnswers !== undefined ? raw.wrongAnswers : (att.wrongAnswers !== undefined ? att.wrongAnswers : Math.max(0, totalQ - correctAnswers));
       const unansweredQuestions = raw.unansweredQuestions !== undefined ? raw.unansweredQuestions : (att.unansweredQuestions !== undefined ? att.unansweredQuestions : 0);
       const timeTaken = (raw.timeTakenSeconds !== undefined && raw.timeTakenSeconds !== null) 
         ? raw.timeTakenSeconds 
         : ((att.timeTakenSeconds !== undefined && att.timeTakenSeconds !== null) ? att.timeTakenSeconds : 10);
-      const reviews = raw.reviews || att.reviews || [];
 
       document.getElementById('result-content').classList.remove('d-none');
 

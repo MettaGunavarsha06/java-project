@@ -180,7 +180,8 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
             String desc = (String) bodyMap.get("description");
             int duration = parseInt(bodyMap.get("duration"), 10);
             int totalMarks = parseInt(bodyMap.get("totalMarks"), 50);
-            ApiResponse<?> res = adminController.createQuiz(currentUser, title, desc, duration, totalMarks);
+            int questionCount = parseInt(bodyMap.get("questionCount"), 10);
+            ApiResponse<?> res = adminController.createQuiz(currentUser, title, desc, duration, totalMarks, questionCount);
             sendJsonResponse(out, res.isSuccess() ? 200 : 400, res.isSuccess() ? "OK" : "Bad Request", res);
             return;
         }
@@ -191,7 +192,11 @@ public class HttpRouter implements SimpleHttpServer.RequestHandler {
             String desc = (String) bodyMap.get("description");
             int duration = parseInt(bodyMap.get("duration"), 10);
             int totalMarks = parseInt(bodyMap.get("totalMarks"), 50);
+            int questionCount = parseInt(bodyMap.get("questionCount"), 0);
             ApiResponse<?> res = adminController.updateQuiz(currentUser, id, title, desc, duration, totalMarks);
+            if (questionCount > 0) {
+                adminController.generateBulkQuestions(currentUser, id, questionCount);
+            }
             sendJsonResponse(out, res.isSuccess() ? 200 : 400, res.isSuccess() ? "OK" : "Bad Request", res);
             return;
         }

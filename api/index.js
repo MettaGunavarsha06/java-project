@@ -113,6 +113,104 @@ let loginHistory = [
   { id: 3, userId: 3, name: "Sophia Chen", email: "sophia@student.com", loginTime: "2026-11-03 16:45:00", ipAddress: "192.168.1.102", userAgent: "Mozilla/5.0 Safari/17.2", loginStatus: "SUCCESS" }
 ];
 
+// Master Technical Question Bank (Java Core, OOP, SQL, Multithreading, Collections, JVM, JDBC)
+const MASTER_QUESTION_BANK = [
+  // 1-10: Java Core & OOP
+  { text: "Which OOP principle emphasizes hiding internal state and requiring interaction through methods?", a: "Inheritance", b: "Encapsulation", c: "Polymorphism", d: "Abstraction", ans: "B" },
+  { text: "What is the default value of a boolean variable declared as an instance member in Java?", a: "true", b: "false", c: "0", d: "null", ans: "B" },
+  { text: "Which keyword is used by a class to inherit from an abstract class?", a: "implements", b: "extends", c: "inherits", d: "instanceof", ans: "B" },
+  { text: "Can an abstract class have constructors in Java?", a: "No, abstract classes cannot have constructors", b: "Yes, but only private constructors", c: "Yes, invoked during subclass instantiation via super()", d: "Only if no abstract methods", ans: "C" },
+  { text: "Which statement is true regarding method overriding in Java?", a: "Return type must be incompatible", b: "Signature must match superclass method", c: "Private methods can override", d: "Static methods override dynamically", ans: "B" },
+  { text: "Which keyword prevents a class from being inherited in Java?", a: "abstract", b: "final", c: "static", d: "sealed", ans: "B" },
+  { text: "What is the return type of the hashCode() method defined in java.lang.Object?", a: "long", b: "int", c: "short", d: "void", ans: "B" },
+  { text: "What is the superclass of all Exception and Error classes in Java?", a: "Throwable", b: "Object", c: "RuntimeException", d: "Exception", ans: "A" },
+  { text: "Which clause in try-catch-finally always executes regardless of exceptions?", a: "try", b: "catch", c: "finally", d: "throws", ans: "C" },
+  { text: "What is the default isolation level in MySQL InnoDB engine?", a: "READ UNCOMMITTED", b: "REPEATABLE READ", c: "SERIALIZABLE", d: "READ COMMITTED", ans: "B" },
+
+  // 11-20: Collections & Generics
+  { text: "Which Collections interface allows unique elements only and does not maintain insertion order by default?", a: "ArrayList", b: "LinkedList", c: "HashSet", d: "Vector", ans: "C" },
+  { text: "Which collection class is synchronized and thread-safe by default?", a: "ArrayList", b: "Vector", c: "LinkedList", d: "TreeSet", ans: "B" },
+  { text: "What data structure does TreeSet use internally to maintain sorted order?", a: "Red-Black Tree", b: "Binary Search Tree", c: "Heap", d: "B-Tree", ans: "A" },
+  { text: "Which method removes all elements from a Java Collection?", a: "deleteAll()", b: "clear()", c: "empty()", d: "reset()", ans: "B" },
+  { text: "In Java Generics, what does <? extends Number> represent?", a: "Unbounded wildcard", b: "Upper bounded wildcard", c: "Lower bounded wildcard", d: "Exact type match", ans: "B" },
+  { text: "In Java Generics, what does <? super Integer> represent?", a: "Upper bounded wildcard", b: "Lower bounded wildcard", c: "Unbounded wildcard", d: "Invariant wildcard", ans: "B" },
+  { text: "What is the compile-time mechanism where generic type parameters are removed called?", a: "Type Casting", b: "Type Erasure", c: "Autoboxing", d: "Type Conversion", ans: "B" },
+  { text: "Which class provides static methods like Collections.sort() and reverse()?", a: "java.util.Collections", b: "java.util.Collection", c: "java.util.Arrays", d: "java.util.List", ans: "A" },
+  { text: "What is the difference between Comparable and Comparator in Java?", a: "Comparable defines natural ordering via compareTo(); Comparator defines custom sorting via compare()", b: "Comparable is for numbers only", c: "Comparator is an abstract class", d: "They are identical", ans: "A" },
+  { text: "Which map implementation maintains the insertion order of elements?", a: "HashMap", b: "TreeMap", c: "LinkedHashMap", d: "WeakHashMap", ans: "C" },
+
+  // 21-30: Multithreading & Concurrency
+  { text: "What will happen when you call Thread.start() twice on the same Thread instance?", a: "Thread restarts from beginning", b: "IllegalThreadStateException is thrown", c: "A new thread is created automatically", d: "The call is silently ignored", ans: "B" },
+  { text: "Which concurrency interface returns a value and throws checked exceptions?", a: "Runnable", b: "Callable", c: "Thread", d: "Executor", ans: "B" },
+  { text: "Which mechanism in Java provides mutual exclusion to prevent race conditions on shared objects?", a: "volatile keyword", b: "synchronized block or method", c: "transient keyword", d: "finalize method", ans: "B" },
+  { text: "What is the state of a thread waiting for an intrinsic monitor lock in Java?", a: "WAITING", b: "TIMED_WAITING", c: "BLOCKED", d: "TERMINATED", ans: "C" },
+  { text: "Which concurrency class allows one or more threads to wait until a countdown reaches zero?", a: "CountDownLatch", b: "CyclicBarrier", c: "Semaphore", d: "AtomicInteger", ans: "A" },
+  { text: "Which synchronization primitive controls access to a fixed number of permits?", a: "ReentrantLock", b: "Semaphore", c: "Phaser", d: "Exchanger", ans: "B" },
+  { text: "What is the primary advantage of using a ThreadPool over creating new Thread instances?", a: "Thread reuse reduces resource overhead and thread creation latency", b: "It bypasses CPU limitations", c: "Threads never terminate", d: "It eliminates synchronization", ans: "A" },
+  { text: "What method on Future<T> blocks until the computation completes to return the result?", a: "get()", b: "isDone()", c: "cancel()", d: "await()", ans: "A" },
+  { text: "Which package was introduced in Java 5 containing modern concurrency utilities?", a: "java.util.concurrent", b: "java.lang.thread", c: "java.concurrent", d: "java.util.threads", ans: "A" },
+  { text: "What is a race condition in multithreading?", a: "When two threads finish at the exact same millisecond", b: "When multiple threads concurrently modify shared state leading to inconsistent results", c: "When thread priority is equal", d: "When a thread exceeds its time slice", ans: "B" },
+
+  // 31-40: Database, SQL & JDBC
+  { text: "Why is PreparedStatement preferred over Statement in JDBC?", a: "It executes slower but supports more databases", b: "It prevents SQL Injection and pre-compiles queries for efficiency", c: "It requires no database connection", d: "It does not require parameter binding", ans: "B" },
+  { text: "Which JDBC method commits the current database transaction when auto-commit is disabled?", a: "connection.setAutoCommit(true)", b: "connection.save()", c: "connection.commit()", d: "statement.executeCommit()", ans: "C" },
+  { text: "What type of exception is java.sql.SQLException in Java?", a: "Unchecked Exception (RuntimeException)", b: "Checked Exception requiring try-catch or throws", c: "Error", d: "JVM Fatal Error", ans: "B" },
+  { text: "Which interface in java.sql is used to retrieve rows from an executed SQL SELECT query?", a: "RowMapper", b: "ResultSet", c: "DataRecord", d: "CursorSet", ans: "B" },
+  { text: "Which clause in SQL is used to filter records after aggregation using GROUP BY?", a: "WHERE", b: "HAVING", c: "ORDER BY", d: "FILTER", ans: "B" },
+  { text: "How do you disable auto-commit mode on a JDBC Connection?", a: "conn.setAutoCommit(false)", b: "conn.commit(false)", c: "conn.setTransaction(false)", d: "conn.begin()", ans: "A" },
+  { text: "Which method rolls back changes in the current database transaction?", a: "conn.rollback()", b: "conn.abort()", c: "conn.undo()", d: "conn.revert()", ans: "A" },
+  { text: "Which SQL clause is used to sort query results in ascending or descending order?", a: "GROUP BY", b: "ORDER BY", c: "SORT BY", d: "ARRANGE BY", ans: "B" },
+  { text: "What does the ACID acronym stand for in relational databases?", a: "Atomicity, Consistency, Isolation, Durability", b: "Action, Commit, Integrity, Data", c: "Access, Control, Index, Database", d: "Accuracy, Concurrency, Isolation, Deletion", ans: "A" },
+  { text: "Which JDBC statement type is used to invoke stored procedures and functions?", a: "PreparedStatement", b: "CallableStatement", c: "BatchStatement", d: "ProcedureStatement", ans: "B" },
+
+  // 41-50: SQL Joins, DDL & Java 8+ Streams
+  { text: "What does rs.next() return in JDBC ResultSet?", a: "The current row object", b: "true if the next row is valid, false if no more rows", c: "The total count of rows", d: "The column index", ans: "B" },
+  { text: "What type of join returns all rows from the left table and matched rows from the right table?", a: "INNER JOIN", b: "LEFT JOIN", c: "RIGHT JOIN", d: "FULL JOIN", ans: "B" },
+  { text: "Which SQL statement is used to remove a table and its structure completely?", a: "DELETE TABLE", b: "DROP TABLE", c: "REMOVE TABLE", d: "TRUNCATE TABLE", ans: "B" },
+  { text: "What is a Functional Interface in Java 8?", a: "An interface with only default methods", b: "An interface with exactly one abstract method", c: "An interface with no methods", d: "An interface extending Functional", ans: "B" },
+  { text: "Which annotation is recommended on single-abstract-method interfaces in Java?", a: "@FunctionalInterface", b: "@Functional", c: "@SingleMethod", d: "@Lambda", ans: "A" },
+  { text: "Which Stream API operation converts stream elements to a List?", a: "collect(Collectors.toList())", b: "toListStream()", c: "asArrayList()", d: "convert(List.class)", ans: "A" },
+  { text: "Is Stream.map() an intermediate or terminal operation in Java 8?", a: "Intermediate operation", b: "Terminal operation", c: "Static operation", d: "Reduction operation", ans: "A" },
+  { text: "Is Stream.forEach() an intermediate or terminal operation in Java 8?", a: "Intermediate operation", b: "Terminal operation", c: "Filter operation", d: "Parallel operation", ans: "B" },
+  { text: "Which class prevents NullPointerException by wrapping nullable values in Java 8?", a: "java.util.Optional", b: "java.util.Nullable", c: "java.lang.Wrapper", d: "java.util.SafeObject", ans: "A" },
+  { text: "Which method reference syntax is equivalent to x -> System.out.println(x)?", a: "System.out::println", b: "System.out->println", c: "System.out.println()", d: "System::out::println", ans: "A" },
+
+  // 51-60: Streams, Memory & Serialization
+  { text: "What does the reduce() method do in the Java Stream API?", a: "Filters elements", b: "Combines stream elements into a single summary result", c: "Limits stream length", d: "Sorts elements descending", ans: "B" },
+  { text: "Which marker interface must a class implement to enable object serialization in Java?", a: "java.io.Serializable", b: "java.io.Externalizable", c: "java.lang.Cloneable", d: "java.io.Readable", ans: "A" },
+  { text: "Which keyword prevents a specific field from being serialized in Java?", a: "volatile", b: "transient", c: "static", d: "private", ans: "B" },
+  { text: "What is the purpose of serialVersionUID in a Serializable class?", a: "Controls serialization speed", b: "Identifies class version compatibility during deserialization", c: "Stores object memory address", d: "Encrypts serialized data", ans: "B" },
+  { text: "Where are Java object instances allocated in JVM memory?", a: "Call Stack", b: "Heap memory", c: "Native memory", d: "Program Counter register", ans: "B" },
+  { text: "Where are primitive local variables stored in Java during method execution?", a: "Heap memory", b: "Call Stack memory", c: "Metaspace", d: "Constant Pool", ans: "B" },
+  { text: "What is the primary role of the Java Garbage Collector?", a: "Deallocates unreachable heap memory automatically", b: "Compiles bytecode to native instructions", c: "Checks syntax errors", d: "Encrypts strings in memory", ans: "A" },
+  { text: "What Error is thrown when JVM runs out of heap memory?", a: "StackOverflowError", b: "OutOfMemoryError", c: "MemoryLimitException", d: "HeapFullException", ans: "B" },
+  { text: "What Error is thrown when infinite recursion exhausts thread stack space?", a: "StackOverflowError", b: "OutOfMemoryError", c: "RecursionLimitError", d: "InfiniteLoopException", ans: "A" },
+  { text: "What is the time complexity of retrieval in an ideal HashMap?", a: "O(n)", b: "O(log n)", c: "O(1)", d: "O(n log n)", ans: "C" }
+];
+
+function generateQuestionsForQuiz(quizId, count) {
+  const target = Math.max(1, Math.min(100, parseInt(count) || 10));
+  const list = [];
+  for (let i = 0; i < target; i++) {
+    const tmpl = MASTER_QUESTION_BANK[i % MASTER_QUESTION_BANK.length];
+    const isRepeated = i >= MASTER_QUESTION_BANK.length;
+    const qNum = i + 1;
+    list.push({
+      id: qNum,
+      quizId: quizId,
+      questionText: isRepeated 
+        ? `${tmpl.text} (Set ${Math.floor(i / MASTER_QUESTION_BANK.length) + 1}, Item #${qNum})`
+        : tmpl.text,
+      optionA: tmpl.a,
+      optionB: tmpl.b,
+      optionC: tmpl.c,
+      optionD: tmpl.d,
+      correctAnswer: tmpl.ans
+    });
+  }
+  return list;
+}
+
 let quizzes = [
   {
     id: 1,
@@ -120,13 +218,7 @@ let quizzes = [
     description: "Comprehensive assessment covering Object-Oriented Programming, Abstraction, Polymorphism, Inheritance, Encapsulation, and Java 8 Lambdas.",
     duration: 10,
     totalMarks: 50,
-    questions: [
-      { id: 1, quizId: 1, questionText: "Which OOP principle emphasizes hiding internal state and requiring interaction through methods?", optionA: "Inheritance", optionB: "Encapsulation", optionC: "Polymorphism", optionD: "Abstraction", correctAnswer: "B" },
-      { id: 2, quizId: 1, questionText: "What is the default value of a boolean variable declared as an instance member in Java?", optionA: "true", optionB: "false", optionC: "0", optionD: "null", correctAnswer: "B" },
-      { id: 3, quizId: 1, questionText: "Which keyword is used by a class to inherit from an abstract class?", optionA: "implements", optionB: "extends", optionC: "inherits", optionD: "instanceof", correctAnswer: "B" },
-      { id: 4, quizId: 1, questionText: "Can an abstract class have constructors in Java?", optionA: "No", optionB: "Yes, only private", optionC: "Yes, invoked via super() in subclass", optionD: "Only if no abstract methods", correctAnswer: "C" },
-      { id: 5, quizId: 1, questionText: "Which statement is true regarding method overriding?", optionA: "Return type must differ", optionB: "Signature must match superclass", optionC: "Private methods can override", optionD: "Static methods override dynamically", correctAnswer: "B" }
-    ]
+    questions: generateQuestionsForQuiz(1, 10)
   },
   {
     id: 2,
@@ -134,13 +226,7 @@ let quizzes = [
     description: "Evaluate your skills in Java Collections (List, Set, Map), Generics, Thread Lifecycle, and Concurrency utilities.",
     duration: 15,
     totalMarks: 50,
-    questions: [
-      { id: 6, quizId: 2, questionText: "Which Collections interface allows unique elements only?", optionA: "ArrayList", optionB: "LinkedList", optionC: "HashSet", optionD: "Vector", correctAnswer: "C" },
-      { id: 7, quizId: 2, questionText: "Calling Thread.start() twice on same instance causes?", optionA: "Restart", optionB: "IllegalThreadStateException", optionC: "New thread", optionD: "Ignored", correctAnswer: "B" },
-      { id: 8, quizId: 2, questionText: "Which concurrency interface returns a value and throws checked exceptions?", optionA: "Runnable", optionB: "Callable", optionC: "Thread", optionD: "Executor", correctAnswer: "B" },
-      { id: 9, quizId: 2, questionText: "What does Stream filter() do?", optionA: "Transform type", optionB: "Returns elements matching Predicate", optionC: "Terminates stream", optionD: "Sorts elements", correctAnswer: "B" },
-      { id: 10, quizId: 2, questionText: "Which keyword provides mutual exclusion to prevent race conditions?", optionA: "volatile", optionB: "synchronized", optionC: "transient", optionD: "native", correctAnswer: "B" }
-    ]
+    questions: generateQuestionsForQuiz(2, 10)
   },
   {
     id: 3,
@@ -148,13 +234,7 @@ let quizzes = [
     description: "Questions covering relational database normalization, SQL queries, PreparedStatement, and JDBC transaction management.",
     duration: 10,
     totalMarks: 50,
-    questions: [
-      { id: 11, quizId: 3, questionText: "Why is PreparedStatement preferred over Statement?", optionA: "Slower", optionB: "Prevents SQL Injection and pre-compiles", optionC: "No connection needed", optionD: "No parameters", correctAnswer: "B" },
-      { id: 12, quizId: 3, questionText: "Which JDBC method commits the transaction when autoCommit is false?", optionA: "setAutoCommit", optionB: "save", optionC: "commit", optionD: "executeCommit", correctAnswer: "C" },
-      { id: 13, quizId: 3, questionText: "What type of exception is SQLException?", optionA: "Unchecked", optionB: "Checked Exception", optionC: "Error", optionD: "Fatal", correctAnswer: "B" },
-      { id: 14, quizId: 3, questionText: "Which interface retrieves rows from a SQL query?", optionA: "RowMapper", optionB: "ResultSet", optionC: "DataRecord", optionD: "Cursor", correctAnswer: "B" },
-      { id: 15, quizId: 3, questionText: "Which clause filters records after GROUP BY?", optionA: "WHERE", optionB: "HAVING", optionC: "ORDER BY", optionD: "FILTER", correctAnswer: "B" }
-    ]
+    questions: generateQuestionsForQuiz(3, 10)
   }
 ];
 
@@ -372,7 +452,9 @@ module.exports = async function handler(req, res) {
       description: q.description,
       duration: q.duration,
       totalMarks: q.totalMarks,
-      totalQuestions: q.questions ? q.questions.length : 0
+      totalQuestions: q.questions ? q.questions.length : 0,
+      questionCount: q.questions ? q.questions.length : 0,
+      questions: q.questions
     }));
     return sendJson(res, 200, { success: true, data: safeQuizzes });
   }
@@ -388,6 +470,8 @@ module.exports = async function handler(req, res) {
     const qId = parseInt(quizByIdMatch[1]);
     const quiz = quizzes.find(q => q.id === qId);
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+    quiz.totalQuestions = quiz.questions ? quiz.questions.length : 0;
+    quiz.questionCount = quiz.questions ? quiz.questions.length : 0;
     return sendJson(res, 200, { success: true, data: quiz });
   }
 
@@ -412,8 +496,15 @@ module.exports = async function handler(req, res) {
   const quizStartMatch = path.match(/^\/api\/(?:quizzes|student\/quiz)\/(\d+)\/start$/);
   if (quizStartMatch && req.method === 'POST') {
     const qId = parseInt(quizStartMatch[1]);
-    const quiz = quizzes.find(q => q.id === qId);
+    let quiz = quizzes.find(q => q.id === qId);
+    if (!quiz && body && body.quiz) {
+      quiz = body.quiz;
+      quizzes.push(quiz);
+    }
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+    if (body && body.questions && body.questions.length > quiz.questions.length) {
+      quiz.questions = body.questions;
+    }
     const sessionId = 'sess_' + Math.random().toString(36).substring(2);
     return sendJson(res, 200, {
       success: true,
@@ -430,6 +521,8 @@ module.exports = async function handler(req, res) {
           description: quiz.description,
           duration: quiz.duration,
           totalMarks: quiz.totalMarks,
+          questionCount: quiz.questions.length,
+          totalQuestions: quiz.questions.length,
           questions: quiz.questions.map(q => ({
             id: q.id,
             quizId: q.quizId,
@@ -449,8 +542,23 @@ module.exports = async function handler(req, res) {
   if (quizSubmitMatch && req.method === 'POST') {
     const quizIdParam = quizSubmitMatch[1] ? parseInt(quizSubmitMatch[1]) : parseInt(body.quizId);
     const { studentId, answers = {} } = body;
-    const quiz = quizzes.find(q => q.id === quizIdParam);
+    let quiz = quizzes.find(q => q.id === quizIdParam);
+    if (!quiz && body.questions && body.questions.length > 0) {
+      quiz = {
+        id: quizIdParam,
+        title: body.quizTitle || 'Assessment',
+        description: 'Examination evaluation',
+        duration: 10,
+        totalMarks: body.totalMarks || 50,
+        questions: body.questions
+      };
+      quizzes.push(quiz);
+    }
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+
+    if (body.questions && Array.isArray(body.questions) && body.questions.length > quiz.questions.length) {
+      quiz.questions = body.questions;
+    }
 
     let correctCount = 0;
     let wrongCount = 0;
@@ -682,49 +790,130 @@ module.exports = async function handler(req, res) {
     });
   }
 
+  // ---------------- ADMIN QUIZ & QUESTION CRUD ----------------
   if (path === '/api/admin/quizzes' && req.method === 'POST') {
-    const { title, description, duration, totalMarks } = body;
-    const newId = quizzes.length + 1;
+    const { title, description, duration, totalMarks, questionCount } = body;
+    const newId = quizzes.length > 0 ? Math.max(...quizzes.map(q => q.id)) + 1 : 1;
+    const count = Math.min(100, Math.max(1, parseInt(questionCount) || 10));
     const newQuiz = {
       id: newId,
       title: title || 'New Assessment',
       description: description || 'Practical Java and Relational Database Evaluation',
       duration: parseInt(duration) || 10,
       totalMarks: parseInt(totalMarks) || 50,
-      questions: [
-        { id: 1, quizId: newId, questionText: "Which collection class guarantees unique elements in Java?", optionA: "ArrayList", optionB: "HashSet", optionC: "LinkedList", optionD: "Vector", correctAnswer: "B" },
-        { id: 2, quizId: newId, questionText: "What keyword is used to prevent method overriding in Java?", optionA: "static", optionB: "final", optionC: "const", optionD: "abstract", correctAnswer: "B" },
-        { id: 3, quizId: newId, questionText: "Which interface in java.util.concurrent returns a Future value?", optionA: "Runnable", optionB: "Callable", optionC: "Thread", optionD: "Process", correctAnswer: "B" },
-        { id: 4, quizId: newId, questionText: "Which SQL clause filters rows before aggregation with GROUP BY?", optionA: "HAVING", optionB: "WHERE", optionC: "ORDER BY", optionD: "FILTER", correctAnswer: "B" },
-        { id: 5, quizId: newId, questionText: "What is the default isolation level in MySQL InnoDB?", optionA: "READ UNCOMMITTED", optionB: "REPEATABLE READ", optionC: "SERIALIZABLE", optionD: "READ COMMITTED", correctAnswer: "B" }
-      ]
+      questionCount: count,
+      totalQuestions: count,
+      questions: generateQuestionsForQuiz(newId, count)
     };
     quizzes.push(newQuiz);
     return sendJson(res, 200, { success: true, message: 'Quiz created successfully', data: newQuiz });
   }
 
+  const adminQuizIdMatch = path.match(/^\/api\/admin\/quizzes\/(\d+)$/);
+  if (adminQuizIdMatch && req.method === 'PUT') {
+    const qId = parseInt(adminQuizIdMatch[1]);
+    const quiz = quizzes.find(q => q.id === qId);
+    if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+    if (body.title !== undefined) quiz.title = body.title;
+    if (body.description !== undefined) quiz.description = body.description;
+    if (body.duration !== undefined) quiz.duration = parseInt(body.duration) || 10;
+    if (body.totalMarks !== undefined) quiz.totalMarks = parseInt(body.totalMarks) || 50;
+    if (body.questionCount !== undefined) {
+      const targetCount = parseInt(body.questionCount);
+      if (!isNaN(targetCount) && targetCount > 0 && targetCount !== quiz.questions.length) {
+        quiz.questions = generateQuestionsForQuiz(quiz.id, targetCount);
+      }
+    }
+    quiz.questionCount = quiz.questions.length;
+    quiz.totalQuestions = quiz.questions.length;
+    return sendJson(res, 200, { success: true, message: 'Quiz updated successfully', data: quiz });
+  }
+
+  if (adminQuizIdMatch && req.method === 'DELETE') {
+    const qId = parseInt(adminQuizIdMatch[1]);
+    const idx = quizzes.findIndex(q => q.id === qId);
+    if (idx !== -1) {
+      quizzes.splice(idx, 1);
+      return sendJson(res, 200, { success: true, message: 'Quiz deleted successfully' });
+    }
+    return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+  }
+
   const bulkGenMatch = path.match(/^\/api\/admin\/quizzes\/(\d+)\/generate-questions$/);
   if (bulkGenMatch && req.method === 'POST') {
     const qId = parseInt(bulkGenMatch[1]);
-    const quiz = quizzes.find(q => q.id === qId);
-    if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
-    const count = parseInt(body.count) || 25;
-
-    for (let i = 1; i <= count; i++) {
-      const qNum = quiz.questions.length + 1;
-      quiz.questions.push({
-        id: qNum,
-        quizId: quiz.id,
-        questionText: `Question #${qNum}: Practical evaluation of Java, SQL, and Relational Database concepts.`,
-        optionA: "Option A",
-        optionB: "Option B (Correct)",
-        optionC: "Option C",
-        optionD: "Option D",
-        correctAnswer: "B"
-      });
+    let quiz = quizzes.find(q => q.id === qId);
+    if (!quiz && body.quiz) {
+      quiz = body.quiz;
+      quizzes.push(quiz);
     }
+    if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+    const targetCount = Math.min(100, Math.max(1, parseInt(body.count) || 25));
+    quiz.questions = generateQuestionsForQuiz(quiz.id, targetCount);
+    quiz.questionCount = quiz.questions.length;
+    quiz.totalQuestions = quiz.questions.length;
 
-    return sendJson(res, 200, { success: true, message: `Generated questions up to ${quiz.questions.length}` });
+    return sendJson(res, 200, {
+      success: true,
+      message: `Questions bank scaled to ${quiz.questions.length} questions successfully!`,
+      data: {
+        quiz,
+        totalQuestions: quiz.questions.length
+      }
+    });
+  }
+
+  if (path === '/api/admin/questions' && req.method === 'POST') {
+    const { quizId, questionText, optionA, optionB, optionC, optionD, correctAnswer } = body;
+    const quiz = quizzes.find(q => q.id === parseInt(quizId));
+    if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
+    const newId = quiz.questions.length > 0 ? Math.max(...quiz.questions.map(q => q.id)) + 1 : 1;
+    const newQ = {
+      id: newId,
+      quizId: quiz.id,
+      questionText: questionText || 'New Question',
+      optionA: optionA || 'Option A',
+      optionB: optionB || 'Option B',
+      optionC: optionC || 'Option C',
+      optionD: optionD || 'Option D',
+      correctAnswer: (correctAnswer || 'A').toUpperCase()
+    };
+    quiz.questions.push(newQ);
+    quiz.questionCount = quiz.questions.length;
+    quiz.totalQuestions = quiz.questions.length;
+    return sendJson(res, 200, { success: true, message: 'Question added successfully', data: newQ, quiz });
+  }
+
+  const questionActionMatch = path.match(/^\/api\/admin\/questions\/(\d+)$/);
+  if (questionActionMatch && req.method === 'PUT') {
+    const qId = parseInt(questionActionMatch[1]);
+    for (const quiz of quizzes) {
+      const q = quiz.questions.find(x => x.id === qId);
+      if (q) {
+        if (body.questionText) q.questionText = body.questionText;
+        if (body.optionA) q.optionA = body.optionA;
+        if (body.optionB) q.optionB = body.optionB;
+        if (body.optionC) q.optionC = body.optionC;
+        if (body.optionD) q.optionD = body.optionD;
+        if (body.correctAnswer) q.correctAnswer = body.correctAnswer.toUpperCase();
+        return sendJson(res, 200, { success: true, message: 'Question updated successfully', data: q, quiz });
+      }
+    }
+    return sendJson(res, 404, { success: false, message: 'Question not found' });
+  }
+
+  if (questionActionMatch && req.method === 'DELETE') {
+    const qId = parseInt(questionActionMatch[1]);
+    for (const quiz of quizzes) {
+      const idx = quiz.questions.findIndex(x => x.id === qId);
+      if (idx !== -1) {
+        quiz.questions.splice(idx, 1);
+        quiz.questionCount = quiz.questions.length;
+        quiz.totalQuestions = quiz.questions.length;
+        return sendJson(res, 200, { success: true, message: 'Question deleted successfully', quiz });
+      }
+    }
+    return sendJson(res, 404, { success: false, message: 'Question not found' });
   }
 
   // ---------------- SYSTEM DB STATUS ----------------

@@ -260,6 +260,20 @@
                 <label class="form-label fw-semibold small">Total Marks</label>
                 <input type="number" class="form-control" id="quiz-marks-input" required min="1" value="50">
               </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold small"><i class="bi bi-question-circle me-1 text-primary"></i> Number of Questions</label>
+                <select class="form-select" id="quiz-questions-count-input">
+                  <option value="5">5 Questions</option>
+                  <option value="10" selected>10 Questions</option>
+                  <option value="15">15 Questions</option>
+                  <option value="20">20 Questions</option>
+                  <option value="25">25 Questions</option>
+                  <option value="30">30 Questions</option>
+                  <option value="50">50 Questions</option>
+                  <option value="100">100 Questions (Max Bank)</option>
+                </select>
+                <div class="form-text small">Select the exact number of examination questions generated for candidates.</div>
+              </div>
             </div>
           </form>
         </div>
@@ -291,7 +305,7 @@
               <span class="fw-bold text-dark d-block">Multiple Choice Questions (Max 100)</span>
               <span class="small text-muted">Add questions manually or auto-scale the question bank up to 100 questions</span>
             </div>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
               <!-- Scale up to 100 Questions Dropdown -->
               <div class="dropdown">
                 <button class="btn btn-sm btn-outline-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -299,12 +313,21 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                   <li><h6 class="dropdown-header">Auto-Populate Bank</h6></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(5)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 5 Questions</a></li>
                   <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(10)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 10 Questions</a></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(15)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 15 Questions</a></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(20)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 20 Questions</a></li>
                   <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(25)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 25 Questions</a></li>
+                  <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(30)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 30 Questions</a></li>
                   <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickScaleQuestions(50)"><i class="bi bi-plus-circle me-2 text-primary"></i>Scale to 50 Questions</a></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item fw-bold text-success" href="javascript:void(0)" onclick="quickScaleQuestions(100)"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Scale to 100 Questions (Max)</a></li>
                 </ul>
+              </div>
+              <!-- Custom Count Scale Input -->
+              <div class="input-group input-group-sm" style="width: 175px;">
+                <input type="number" id="quick-custom-scale-input" class="form-control" min="1" max="100" placeholder="Count (1-100)">
+                <button class="btn btn-outline-primary" type="button" onclick="applyCustomScale()">Apply</button>
               </div>
               <button id="btn-add-question-modal" class="btn btn-sm btn-primary-custom" onclick="openAddQuestionModal()">
                 <i class="bi bi-plus-lg me-1"></i> Add Question

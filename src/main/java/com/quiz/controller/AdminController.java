@@ -52,11 +52,19 @@ public class AdminController {
 
     @AuditLog(action = "ADMIN_CREATE_QUIZ", critical = true)
     public ApiResponse<?> createQuiz(User user, String title, String description, int duration, int totalMarks) {
+        return createQuiz(user, title, description, duration, totalMarks, 10);
+    }
+
+    @AuditLog(action = "ADMIN_CREATE_QUIZ", critical = true)
+    public ApiResponse<?> createQuiz(User user, String title, String description, int duration, int totalMarks, int questionCount) {
         if (!checkAdmin(user)) return ApiResponse.error("Access Denied: Administrator role required.");
         try {
             Quiz quiz = quizService.createQuiz(title, description, duration, totalMarks);
-            return ApiResponse.success("Quiz created successfully", quiz);
-        } catch (DatabaseException e) {
+            int count = Math.min(100, Math.max(1, questionCount));
+            quizService.generateQuestionsUpTo(quiz.getId(), count);
+            Quiz fullQuiz = quizService.getQuizWithQuestions(quiz.getId());
+            return ApiResponse.success("Quiz created successfully with " + fullQuiz.getQuestions().size() + " questions", fullQuiz);
+        } catch (DatabaseException | ResourceNotFoundException e) {
             return ApiResponse.error("Failed to create quiz: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             return ApiResponse.error("Validation error: " + e.getMessage());

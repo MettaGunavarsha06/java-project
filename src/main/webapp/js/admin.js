@@ -114,6 +114,8 @@ function openCreateQuizModal() {
   document.getElementById('quizModalTitle').innerText = 'Create New Quiz';
   document.getElementById('quizForm').reset();
   document.getElementById('quiz-id-field').value = '';
+  const qCountInput = document.getElementById('quiz-questions-count-input');
+  if (qCountInput) qCountInput.value = '10';
   const modal = new bootstrap.Modal(document.getElementById('quizModal'));
   modal.show();
 }
@@ -133,6 +135,19 @@ async function openEditQuizModal(id) {
   document.getElementById('quiz-duration-input').value = q.duration;
   document.getElementById('quiz-marks-input').value = q.totalMarks;
 
+  const qCountInput = document.getElementById('quiz-questions-count-input');
+  if (qCountInput) {
+    const totalQ = q.questions ? q.questions.length : (q.questionCount || 10);
+    qCountInput.value = totalQ;
+    if (!qCountInput.value) {
+      const opt = document.createElement('option');
+      opt.value = totalQ;
+      opt.innerText = `${totalQ} Questions`;
+      qCountInput.appendChild(opt);
+      qCountInput.value = totalQ;
+    }
+  }
+
   const modal = new bootstrap.Modal(document.getElementById('quizModal'));
   modal.show();
 }
@@ -143,6 +158,7 @@ async function saveQuiz() {
   const description = document.getElementById('quiz-desc-input').value.trim();
   const duration = parseInt(document.getElementById('quiz-duration-input').value);
   const totalMarks = parseInt(document.getElementById('quiz-marks-input').value);
+  const questionCount = parseInt(document.getElementById('quiz-questions-count-input')?.value) || 10;
 
   if (!title) {
     alert('Please enter a quiz title');
@@ -154,13 +170,13 @@ async function saveQuiz() {
     // Update
     res = await apiRequest(`/admin/quizzes/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ title, description, duration, totalMarks })
+      body: JSON.stringify({ title, description, duration, totalMarks, questionCount })
     });
   } else {
     // Create
     res = await apiRequest('/admin/quizzes', {
       method: 'POST',
-      body: JSON.stringify({ title, description, duration, totalMarks })
+      body: JSON.stringify({ title, description, duration, totalMarks, questionCount })
     });
   }
 
@@ -240,6 +256,15 @@ async function loadQuestionsForActiveQuiz() {
     return;
   }
 
+  // Sync to local storage for instant student session consistency
+  try {
+    const saved = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+    const idx = saved.findIndex(s => s.id === res.data.id);
+    if (idx !== -1) saved[idx] = res.data;
+    else saved.push(res.data);
+    localStorage.setItem('saved_quizzes', JSON.stringify(saved));
+  } catch (e) {}
+
   const questions = res.data.questions || [];
   if (countBadge) {
     countBadge.innerText = `${questions.length} / 100 Questions`;
@@ -287,6 +312,10 @@ async function loadQuestionsForActiveQuiz() {
 
 async function quickScaleQuestions(targetCount) {
   if (!activeQuizIdForQuestions) return;
+  targetCount = parseInt(targetCount);
+  if (isNaN(targetCount) || targetCount < 1) targetCount = 10;
+  if (targetCount > 100) targetCount = 100;
+
   showToast(`Scaling question bank to ${targetCount} questions...`, 'info');
 
   const res = await apiRequest(`/admin/quizzes/${activeQuizIdForQuestions}/generate-questions`, {
@@ -296,10 +325,31 @@ async function quickScaleQuestions(targetCount) {
 
   if (res.success) {
     showToast(res.message || `Scaled to ${targetCount} questions!`, 'success');
+    if (res.data && res.data.quiz) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+        const idx = saved.findIndex(s => s.id === res.data.quiz.id);
+        if (idx !== -1) saved[idx] = res.data.quiz;
+        else saved.push(res.data.quiz);
+        localStorage.setItem('saved_quizzes', JSON.stringify(saved));
+      } catch (e) {}
+    }
     await loadQuestionsForActiveQuiz();
     await loadQuizzesTable();
   } else {
     alert(res.message || 'Error scaling questions');
+  }
+}
+
+function applyCustomScale() {
+  const input = document.getElementById('quick-custom-scale-input');
+  if (!input) return;
+  const count = parseInt(input.value);
+  if (!isNaN(count) && count >= 1 && count <= 100) {
+    quickScaleQuestions(count);
+    input.value = '';
+  } else {
+    alert('Please enter a valid question count between 1 and 100');
   }
 }
 
@@ -357,6 +407,16 @@ async function saveQuestion() {
   if (res.success) {
     showToast(id ? 'Question updated' : 'Question added', 'success');
     bootstrap.Modal.getInstance(document.getElementById('questionEditorModal')).hide();
+    if (res.quiz || (res.data && res.data.quiz)) {
+      const qz = res.quiz || res.data.quiz;
+      try {
+        const saved = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+        const idx = saved.findIndex(s => s.id === qz.id);
+        if (idx !== -1) saved[idx] = qz;
+        else saved.push(qz);
+        localStorage.setItem('saved_quizzes', JSON.stringify(saved));
+      } catch (e) {}
+    }
     loadQuestionsForActiveQuiz();
     loadQuizzesTable();
   } else {
@@ -369,6 +429,16 @@ async function deleteQuestion(id) {
   const res = await apiRequest(`/admin/questions/${id}`, { method: 'DELETE' });
   if (res.success) {
     showToast('Question deleted', 'success');
+    if (res.quiz || (res.data && res.data.quiz)) {
+      const qz = res.quiz || res.data.quiz;
+      try {
+        const saved = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+        const idx = saved.findIndex(s => s.id === qz.id);
+        if (idx !== -1) saved[idx] = qz;
+        else saved.push(qz);
+        localStorage.setItem('saved_quizzes', JSON.stringify(saved));
+      } catch (e) {}
+    }
     loadQuestionsForActiveQuiz();
     loadQuizzesTable();
   } else {

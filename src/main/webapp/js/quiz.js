@@ -34,19 +34,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initializeQuiz(quizId) {
+  // Look in cachedList first
+  let cachedQuiz = null;
+  try {
+    const cachedList = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+    cachedQuiz = cachedList.find(q => q.id === parseInt(quizId));
+  } catch (e) {}
+
   // 1. Try to start quiz on backend to trigger server-side timer thread
-  let startRes = await apiRequest(`/student/quiz/${quizId}/start`, { method: 'POST' });
+  let startRes = await apiRequest(`/student/quiz/${quizId}/start`, { 
+    method: 'POST',
+    body: cachedQuiz ? JSON.stringify({ quiz: cachedQuiz, questions: cachedQuiz.questions }) : undefined
+  });
 
   // Fallback: Check local storage for quiz if backend doesn't have it (e.g., custom admin quiz on serverless cold restart)
   if (!startRes || !startRes.success || !startRes.data) {
-    const cachedList = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
-    const localQuiz = cachedList.find(q => q.id === parseInt(quizId));
-    if (localQuiz) {
+    if (cachedQuiz) {
       startRes = {
         success: true,
         data: {
-          quiz: localQuiz,
-          durationSeconds: (localQuiz.duration || 10) * 60,
+          quiz: cachedQuiz,
+          durationSeconds: (cachedQuiz.duration || 10) * 60,
           sessionId: 'sess_local_' + Date.now()
         }
       };
@@ -61,6 +69,13 @@ async function initializeQuiz(quizId) {
 
   currentQuiz = startRes.data.quiz;
   currentQuestions = currentQuiz.questions || [];
+
+  // If local storage has an updated version of this quiz with more questions, use the full question set!
+  if (cachedQuiz && cachedQuiz.questions && cachedQuiz.questions.length > currentQuestions.length) {
+    currentQuiz = cachedQuiz;
+    currentQuestions = cachedQuiz.questions;
+  }
+
   remainingSeconds = startRes.data.durationSeconds || currentQuiz.duration * 60;
 
   // Ensure at least sample questions exist if empty
@@ -333,7 +348,10 @@ async function confirmSubmit() {
     method: 'POST',
     body: JSON.stringify({ 
       answers: answersMap,
-      timeTakenSeconds: elapsedSeconds
+      timeTakenSeconds: elapsedSeconds,
+      questions: currentQuestions,
+      quizTitle: currentQuiz.title,
+      totalMarks: currentQuiz.totalMarks
     })
   });
 
