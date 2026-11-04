@@ -20,3 +20,4 @@ if exist "C:\Program Files\MariaDB 13.0\bin\mysqld.exe" (
 
 :end
 echo ==============================================================
+
