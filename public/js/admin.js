@@ -28,7 +28,14 @@ async function loadDashboardStats() {
   const localList = QuizStore.getLocalQuizzes();
   const quizCount = Math.max(stats.totalQuizzes || 0, localList.length);
   document.getElementById('stat-total-quizzes').innerText = quizCount;
-  document.getElementById('stat-total-students').innerText = stats.totalStudents || 0;
+  
+  let localStudentsCount = 0;
+  try {
+    const localCandidates = JSON.parse(localStorage.getItem('registered_candidates') || '[]');
+    if (Array.isArray(localCandidates)) localStudentsCount = localCandidates.length;
+  } catch (e) {}
+
+  document.getElementById('stat-total-students').innerText = Math.max(stats.totalStudents || 0, localStudentsCount, cachedCandidatesList.length);
   document.getElementById('stat-total-attempts').innerText = stats.totalAttempts || 0;
   document.getElementById('stat-avg-score').innerText = (stats.averageScore || 0) + '%';
 
@@ -453,16 +460,71 @@ let cachedCandidatesList = [];
 
 async function loadStudentsTable(keyword = '') {
   const url = keyword ? `/admin/students?q=${encodeURIComponent(keyword)}` : '/admin/students';
-  const res = await apiRequest(url);
+  let students = [];
+  try {
+    const res = await apiRequest(url);
+    if (res && res.success && Array.isArray(res.data)) {
+      students = res.data;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch students from API', err);
+  }
+
+  // Merge any locally registered candidates
+  try {
+    const localCandidates = JSON.parse(localStorage.getItem('registered_candidates') || '[]');
+    if (Array.isArray(localCandidates) && localCandidates.length > 0) {
+      const missingOnServer = [];
+      localCandidates.forEach(lc => {
+        if (!lc || !lc.email) return;
+        const exists = students.some(s => s.email && s.email.toLowerCase() === lc.email.toLowerCase());
+        if (!exists) {
+          const formatted = {
+            id: lc.id || (students.length + 1),
+            name: lc.name,
+            email: lc.email,
+            phone: lc.phone || 'N/A',
+            gender: lc.gender || 'N/A',
+            dob: lc.dob || 'N/A',
+            address: lc.address || 'N/A',
+            city: lc.city || '',
+            state: lc.state || '',
+            institution: lc.institution || 'N/A',
+            department: lc.department || lc.degree || 'N/A',
+            rollNumber: lc.rollNumber || 'No Roll #',
+            degree: lc.degree || 'N/A',
+            yearOfStudy: lc.yearOfStudy || 'N/A',
+            cgpa: lc.cgpa || 'N/A',
+            bio: lc.bio || 'Registered candidate',
+            loginCount: lc.loginCount || 1,
+            lastLoginAt: lc.lastLoginAt || new Date().toISOString().replace('T', ' ').substring(0, 19),
+            lastLoginIp: lc.lastLoginIp || '127.0.0.1',
+            status: lc.status || 'ACTIVE',
+            totalQuizzesAttempted: 0,
+            averageScore: 0
+          };
+          students.push(formatted);
+          missingOnServer.push(lc);
+        }
+      });
+      if (missingOnServer.length > 0) {
+        apiRequest('/admin/students/sync', {
+          method: 'POST',
+          body: JSON.stringify({ students: missingOnServer })
+        }).catch(() => {});
+      }
+    }
+  } catch (e) {}
+
   const tbody = document.getElementById('admin-students-tbody');
   if (!tbody) return;
 
-  if (!res.success || !res.data || res.data.length === 0) {
+  if (students.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No candidates found matching criteria.</td></tr>';
     return;
   }
 
-  cachedCandidatesList = res.data;
+  cachedCandidatesList = students;
 
   tbody.innerHTML = res.data.map(s => `
     <tr>

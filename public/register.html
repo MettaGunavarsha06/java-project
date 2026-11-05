@@ -292,6 +292,16 @@
             Auth.setSession(result.data.token, result.data.user);
           }
 
+          if (result.data && result.data.user) {
+            try {
+              const localCandidates = JSON.parse(localStorage.getItem('registered_candidates') || '[]');
+              const cIdx = localCandidates.findIndex(c => c.email && c.email.toLowerCase() === result.data.user.email.toLowerCase());
+              if (cIdx !== -1) localCandidates[cIdx] = result.data.user;
+              else localCandidates.push(result.data.user);
+              localStorage.setItem('registered_candidates', JSON.stringify(localCandidates));
+            } catch (e) {}
+          }
+
           const redirect = new URLSearchParams(window.location.search).get('redirect');
           setTimeout(() => {
             window.location.href = redirect || 'student-dashboard.html';

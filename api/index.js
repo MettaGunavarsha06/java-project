@@ -7,8 +7,33 @@
 const fs = require('fs');
 const path = require('path');
 
+const TMP_DIR = process.platform === 'win32' ? (process.env.TEMP || process.env.TMP || 'C:\\temp') : '/tmp';
+const USERS_STORAGE_PATH = path.join(TMP_DIR, 'quizmaster_users.json');
+
+function readPersistedUsers() {
+  try {
+    if (fs.existsSync(USERS_STORAGE_PATH)) {
+      const content = fs.readFileSync(USERS_STORAGE_PATH, 'utf8');
+      const list = JSON.parse(content);
+      if (Array.isArray(list) && list.length > 0) {
+        return list;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function persistUsersToDisk(list) {
+  try {
+    if (!fs.existsSync(TMP_DIR)) {
+      fs.mkdirSync(TMP_DIR, { recursive: true });
+    }
+    fs.writeFileSync(USERS_STORAGE_PATH, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {}
+}
+
 // Candidate users store
-let users = [
+const DEFAULT_USERS = [
   {
     id: 1,
     name: "Dr. Sarah Connor (Admin)",
@@ -106,6 +131,8 @@ let users = [
     status: "ACTIVE"
   }
 ];
+
+let users = readPersistedUsers() || DEFAULT_USERS;
 
 let loginHistory = [
   { id: 1, userId: 2, name: "Alex Johnson", email: "alex@student.com", loginTime: "2026-11-04 10:15:22", ipAddress: "192.168.1.101", userAgent: "Mozilla/5.0 Chrome/120.0.0", loginStatus: "SUCCESS" },
@@ -211,7 +238,6 @@ function generateQuestionsForQuiz(quizId, count) {
   return list;
 }
 
-const TMP_DIR = process.platform === 'win32' ? (process.env.TEMP || process.env.TMP || 'C:\\temp') : '/tmp';
 const QUIZZES_STORAGE_PATH = path.join(TMP_DIR, 'quizmaster_quizzes.json');
 
 function readPersistedQuizzes() {
@@ -381,6 +407,7 @@ module.exports = async function handler(req, res) {
     user.loginCount = (user.loginCount || 0) + 1;
     user.lastLoginAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
     user.lastLoginIp = req.headers['x-forwarded-for'] || (req.socket ? req.socket.remoteAddress : '127.0.0.1');
+    persistUsersToDisk(users);
 
     loginHistory.unshift({
       id: loginHistory.length + 1,
@@ -440,6 +467,7 @@ module.exports = async function handler(req, res) {
     };
 
     users.push(newUser);
+    persistUsersToDisk(users);
     const sessionToken = 'tok_' + Math.random().toString(36).substring(2) + Date.now();
     sessions.set(sessionToken, newUser);
 
@@ -464,6 +492,7 @@ module.exports = async function handler(req, res) {
   if (path === '/api/auth/profile' && req.method === 'POST') {
     if (!currentUser) return sendJson(res, 401, { success: false, message: 'Unauthorized session.' });
     Object.assign(currentUser, body);
+    persistUsersToDisk(users);
     return sendJson(res, 200, { success: true, message: 'Profile updated successfully!', data: currentUser });
   }
 
@@ -855,37 +884,86 @@ module.exports = async function handler(req, res) {
   }
 
   // ---------------- ADMIN ROUTES ----------------
-  if (path === '/api/admin/candidates' && req.method === 'GET') {
-    const candidates = users.filter(u => u.role === 'STUDENT').map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      phone: u.phone,
-      gender: u.gender,
-      dob: u.dob,
-      institution: u.institution,
-      department: u.department,
-      rollNumber: u.rollNumber,
-      degree: u.degree,
-      yearOfStudy: u.yearOfStudy,
-      cgpa: u.cgpa,
-      city: u.city,
-      state: u.state,
-      address: u.address,
-      bio: u.bio,
-      loginCount: u.loginCount,
-      lastLoginAt: u.lastLoginAt,
-      lastLoginIp: u.lastLoginIp,
-      status: u.status
-    }));
+  if ((path === '/api/admin/candidates' || path === '/api/admin/students') && req.method === 'GET') {
+    const q = (url.searchParams.get('q') || '').toLowerCase().trim();
+    let studentUsers = users.filter(u => u.role === 'STUDENT');
+
+    if (q) {
+      studentUsers = studentUsers.filter(u =>
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.rollNumber && u.rollNumber.toLowerCase().includes(q)) ||
+        (u.institution && u.institution.toLowerCase().includes(q)) ||
+        (u.department && u.department.toLowerCase().includes(q)) ||
+        (u.degree && u.degree.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.toLowerCase().includes(q))
+      );
+    }
+
+    const candidates = studentUsers.map(u => {
+      const candidateAttempts = attempts.filter(a => a.studentId === u.id || (a.studentEmail && a.studentEmail.toLowerCase() === u.email.toLowerCase()));
+      const totalQuizzesAttempted = candidateAttempts.length;
+      const averageScore = totalQuizzesAttempted > 0
+        ? Math.round(candidateAttempts.reduce((acc, a) => acc + (a.percentage || 0), 0) / totalQuizzesAttempted)
+        : 0;
+
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        gender: u.gender,
+        dob: u.dob,
+        institution: u.institution,
+        department: u.department,
+        rollNumber: u.rollNumber,
+        degree: u.degree,
+        yearOfStudy: u.yearOfStudy,
+        cgpa: u.cgpa,
+        city: u.city,
+        state: u.state,
+        address: u.address,
+        bio: u.bio,
+        loginCount: u.loginCount || 1,
+        lastLoginAt: u.lastLoginAt || new Date().toISOString().replace('T', ' ').substring(0, 19),
+        lastLoginIp: u.lastLoginIp || '127.0.0.1',
+        status: u.status || 'ACTIVE',
+        totalQuizzesAttempted,
+        averageScore
+      };
+    });
     return sendJson(res, 200, { success: true, data: candidates });
   }
 
-  const candidateLoginsMatch = path.match(/^\/api\/admin\/candidates\/(\d+)\/logins$/);
+  const candidateLoginsMatch = path.match(/^\/api\/admin\/(?:candidates|students)\/(\d+)\/logins$/);
   if (candidateLoginsMatch && req.method === 'GET') {
     const cId = parseInt(candidateLoginsMatch[1]);
     const history = loginHistory.filter(h => h.userId === cId);
     return sendJson(res, 200, { success: true, data: history });
+  }
+
+  if ((path === '/api/admin/students/sync' || path === '/api/admin/candidates/sync') && req.method === 'POST') {
+    const clientStudents = body.students || body.candidates || [];
+    if (Array.isArray(clientStudents)) {
+      clientStudents.forEach(cs => {
+        if (!cs || !cs.email) return;
+        const existingIdx = users.findIndex(u => u.email.toLowerCase() === cs.email.toLowerCase());
+        if (existingIdx !== -1) {
+          users[existingIdx] = { ...users[existingIdx], ...cs };
+        } else {
+          users.push({
+            id: cs.id || (users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1),
+            role: 'STUDENT',
+            status: 'ACTIVE',
+            loginCount: 1,
+            lastLoginAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            ...cs
+          });
+        }
+      });
+      persistUsersToDisk(users);
+    }
+    return sendJson(res, 200, { success: true, message: 'Candidates synced successfully', total: users.filter(u => u.role === 'STUDENT').length });
   }
 
   if (path === '/api/admin/attempts' && req.method === 'GET') {
