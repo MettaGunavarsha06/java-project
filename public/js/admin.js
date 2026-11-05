@@ -25,7 +25,9 @@ async function loadDashboardStats() {
   if (!res.success || !res.data) return;
 
   const stats = res.data;
-  document.getElementById('stat-total-quizzes').innerText = stats.totalQuizzes || 0;
+  const localList = QuizStore.getLocalQuizzes();
+  const quizCount = Math.max(stats.totalQuizzes || 0, localList.length);
+  document.getElementById('stat-total-quizzes').innerText = quizCount;
   document.getElementById('stat-total-students').innerText = stats.totalStudents || 0;
   document.getElementById('stat-total-attempts').innerText = stats.totalAttempts || 0;
   document.getElementById('stat-avg-score').innerText = (stats.averageScore || 0) + '%';
@@ -70,16 +72,16 @@ function renderPerformanceChart(stats) {
 // ---------------- QUIZ MANAGEMENT ----------------
 
 async function loadQuizzesTable() {
-  const res = await apiRequest('/quizzes');
+  const quizzes = await QuizStore.getMergedQuizzes();
   const tbody = document.getElementById('admin-quizzes-tbody');
   if (!tbody) return;
 
-  if (!res.success || !res.data || res.data.length === 0) {
+  if (!quizzes || quizzes.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No quizzes available. Click "Create Quiz" above.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = res.data.map(q => `
+  tbody.innerHTML = quizzes.map(q => `
     <tr>
       <td class="fw-bold">#${q.id}</td>
       <td>
@@ -121,13 +123,18 @@ function openCreateQuizModal() {
 }
 
 async function openEditQuizModal(id) {
+  let q = null;
   const res = await apiRequest(`/quizzes/${id}`);
-  if (!res.success || !res.data) {
+  if (res && res.success && res.data) {
+    q = res.data;
+  } else {
+    q = QuizStore.getLocalQuizzes().find(x => x.id === parseInt(id));
+  }
+
+  if (!q) {
     showToast('Failed to fetch quiz details', 'error');
     return;
   }
-
-  const q = res.data;
   document.getElementById('quizModalTitle').innerText = 'Edit Quiz #' + q.id;
   document.getElementById('quiz-id-field').value = q.id;
   document.getElementById('quiz-title-input').value = q.title;
@@ -182,15 +189,9 @@ async function saveQuiz() {
 
   if (res.success) {
     const isNew = !id;
-    // Save locally to persist across Vercel serverless sleep cycles
+    // Persist via QuizStore
     if (res.data) {
-      try {
-        const saved = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
-        const idx = saved.findIndex(s => s.id === res.data.id);
-        if (idx !== -1) saved[idx] = res.data;
-        else saved.push(res.data);
-        localStorage.setItem('saved_quizzes', JSON.stringify(saved));
-      } catch (e) {}
+      QuizStore.saveQuiz(res.data);
     }
 
     bootstrap.Modal.getInstance(document.getElementById('quizModal')).hide();
@@ -214,6 +215,7 @@ async function deleteQuiz(id) {
   if (!confirm(`Are you sure you want to delete Quiz #${id}? All associated questions and attempts will be removed.`)) return;
 
   const res = await apiRequest(`/admin/quizzes/${id}`, { method: 'DELETE' });
+  QuizStore.removeQuiz(id);
   if (res.success) {
     showToast('Quiz deleted successfully', 'success');
     loadQuizzesTable();
@@ -631,9 +633,13 @@ function openShareQuizModal(quizId, quizTitle, isJustCreated = false) {
     }
   }
 
-  // Generate URL
+  // Generate URL with metadata so any external device scanning QR gets full details
   const origin = window.location.origin;
-  const quizUrl = `${origin}/quiz-view.html?id=${quizId}`;
+  const qObj = QuizStore.getLocalQuizzes().find(q => q.id === quizId) || {};
+  const dur = qObj.duration || 10;
+  const marks = qObj.totalMarks || 50;
+  const qc = qObj.questionCount || (qObj.questions ? qObj.questions.length : 10);
+  const quizUrl = `${origin}/quiz-view.html?id=${quizId}&title=${encodeURIComponent(quizTitle)}&dur=${dur}&marks=${marks}&qc=${qc}`;
   document.getElementById('share-quiz-url-input').value = quizUrl;
   document.getElementById('share-direct-open-btn').href = quizUrl;
 

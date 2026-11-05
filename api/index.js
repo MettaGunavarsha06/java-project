@@ -211,7 +211,32 @@ function generateQuestionsForQuiz(quizId, count) {
   return list;
 }
 
-let quizzes = [
+const TMP_DIR = process.platform === 'win32' ? (process.env.TEMP || process.env.TMP || 'C:\\temp') : '/tmp';
+const QUIZZES_STORAGE_PATH = path.join(TMP_DIR, 'quizmaster_quizzes.json');
+
+function readPersistedQuizzes() {
+  try {
+    if (fs.existsSync(QUIZZES_STORAGE_PATH)) {
+      const content = fs.readFileSync(QUIZZES_STORAGE_PATH, 'utf8');
+      const list = JSON.parse(content);
+      if (Array.isArray(list) && list.length > 0) {
+        return list;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function persistQuizzesToDisk(list) {
+  try {
+    if (!fs.existsSync(TMP_DIR)) {
+      fs.mkdirSync(TMP_DIR, { recursive: true });
+    }
+    fs.writeFileSync(QUIZZES_STORAGE_PATH, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+const DEFAULT_QUIZZES = [
   {
     id: 1,
     title: "Java Core & OOP Fundamentals",
@@ -237,6 +262,8 @@ let quizzes = [
     questions: generateQuestionsForQuiz(3, 10)
   }
 ];
+
+let quizzes = readPersistedQuizzes() || DEFAULT_QUIZZES;
 
 let attempts = [
   { id: 1, studentId: 2, studentName: "Alex Johnson", studentEmail: "alex@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 50, totalMarks: 50, percentage: 100.0, passed: true, correctAnswers: 5, wrongAnswers: 0, unansweredQuestions: 0, timeTakenSeconds: 180, attemptDate: "2026-11-02 15:30:00" },
@@ -446,6 +473,43 @@ module.exports = async function handler(req, res) {
   }
 
   // ---------------- QUIZ BROWSE & ATTEMPT ROUTES ----------------
+  if (path === '/api/quizzes/sync' && req.method === 'POST') {
+    const clientQuizzes = body.quizzes || [];
+    if (Array.isArray(clientQuizzes)) {
+      clientQuizzes.forEach(cq => {
+        if (!cq || !cq.id) return;
+        const idx = quizzes.findIndex(q => q.id === cq.id);
+        const qCount = (cq.questions && cq.questions.length) ? cq.questions.length : (cq.questionCount || 10);
+        const qList = (cq.questions && cq.questions.length > 0) ? cq.questions : generateQuestionsForQuiz(cq.id, qCount);
+
+        if (idx !== -1) {
+          quizzes[idx] = {
+            ...quizzes[idx],
+            ...cq,
+            duration: parseInt(cq.duration) || quizzes[idx].duration || 10,
+            totalMarks: parseInt(cq.totalMarks) || quizzes[idx].totalMarks || 50,
+            questionCount: qCount,
+            totalQuestions: qCount,
+            questions: (qList.length >= (quizzes[idx].questions?.length || 0)) ? qList : quizzes[idx].questions
+          };
+        } else {
+          quizzes.push({
+            id: cq.id,
+            title: cq.title || `Assessment #${cq.id}`,
+            description: cq.description || 'Comprehensive Examination Evaluation',
+            duration: parseInt(cq.duration) || 10,
+            totalMarks: parseInt(cq.totalMarks) || 50,
+            questionCount: qCount,
+            totalQuestions: qCount,
+            questions: qList
+          });
+        }
+      });
+      persistQuizzesToDisk(quizzes);
+    }
+    return sendJson(res, 200, { success: true, message: 'Quizzes synced successfully', total: quizzes.length });
+  }
+
   if (path === '/api/quizzes' && req.method === 'GET') {
     const safeQuizzes = quizzes.map(q => ({
       id: q.id,
@@ -501,6 +565,7 @@ module.exports = async function handler(req, res) {
     if (!quiz && body && body.quiz) {
       quiz = body.quiz;
       quizzes.push(quiz);
+      persistQuizzesToDisk(quizzes);
     }
     if (!quiz) {
       // Auto-create standard assessment for this ID if not in memory (e.g. Lambda cold start from QR code)
@@ -516,6 +581,7 @@ module.exports = async function handler(req, res) {
         questions: generateQuestionsForQuiz(qId, qCount)
       };
       quizzes.push(quiz);
+      persistQuizzesToDisk(quizzes);
     }
 
     // Ensure all questions have proper options and structure
@@ -864,6 +930,7 @@ module.exports = async function handler(req, res) {
       questions: generateQuestionsForQuiz(newId, count)
     };
     quizzes.push(newQuiz);
+    persistQuizzesToDisk(quizzes);
     return sendJson(res, 200, { success: true, message: 'Quiz created successfully', data: newQuiz });
   }
 
@@ -884,6 +951,7 @@ module.exports = async function handler(req, res) {
     }
     quiz.questionCount = quiz.questions.length;
     quiz.totalQuestions = quiz.questions.length;
+    persistQuizzesToDisk(quizzes);
     return sendJson(res, 200, { success: true, message: 'Quiz updated successfully', data: quiz });
   }
 
@@ -892,6 +960,7 @@ module.exports = async function handler(req, res) {
     const idx = quizzes.findIndex(q => q.id === qId);
     if (idx !== -1) {
       quizzes.splice(idx, 1);
+      persistQuizzesToDisk(quizzes);
       return sendJson(res, 200, { success: true, message: 'Quiz deleted successfully' });
     }
     return sendJson(res, 404, { success: false, message: 'Quiz not found' });
@@ -910,6 +979,7 @@ module.exports = async function handler(req, res) {
     quiz.questions = generateQuestionsForQuiz(quiz.id, targetCount);
     quiz.questionCount = quiz.questions.length;
     quiz.totalQuestions = quiz.questions.length;
+    persistQuizzesToDisk(quizzes);
 
     return sendJson(res, 200, {
       success: true,
@@ -939,6 +1009,7 @@ module.exports = async function handler(req, res) {
     quiz.questions.push(newQ);
     quiz.questionCount = quiz.questions.length;
     quiz.totalQuestions = quiz.questions.length;
+    persistQuizzesToDisk(quizzes);
     return sendJson(res, 200, { success: true, message: 'Question added successfully', data: newQ, quiz });
   }
 
@@ -954,6 +1025,7 @@ module.exports = async function handler(req, res) {
         if (body.optionC) q.optionC = body.optionC;
         if (body.optionD) q.optionD = body.optionD;
         if (body.correctAnswer) q.correctAnswer = body.correctAnswer.toUpperCase();
+        persistQuizzesToDisk(quizzes);
         return sendJson(res, 200, { success: true, message: 'Question updated successfully', data: q, quiz });
       }
     }
@@ -968,6 +1040,7 @@ module.exports = async function handler(req, res) {
         quiz.questions.splice(idx, 1);
         quiz.questionCount = quiz.questions.length;
         quiz.totalQuestions = quiz.questions.length;
+        persistQuizzesToDisk(quizzes);
         return sendJson(res, 200, { success: true, message: 'Question deleted successfully', quiz });
       }
     }

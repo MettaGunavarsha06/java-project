@@ -193,6 +193,124 @@ function escapeHtml(text) {
 /**
  * Live Database Connectivity Status Bar & Auto-Reconnect
  */
+const QuizStore = {
+  STORAGE_KEY: 'quizmaster_all_quizzes',
+  LEGACY_KEY: 'saved_quizzes',
+
+  getLocalQuizzes() {
+    try {
+      const primary = localStorage.getItem(this.STORAGE_KEY);
+      if (primary) {
+        const parsed = JSON.parse(primary);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const legacy = localStorage.getItem(this.LEGACY_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('QuizStore parse error', e);
+    }
+    return [];
+  },
+
+  setLocalQuizzes(list) {
+    try {
+      if (!Array.isArray(list)) list = [];
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(list));
+      localStorage.setItem(this.LEGACY_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn('QuizStore save error', e);
+    }
+  },
+
+  saveQuiz(quiz) {
+    if (!quiz || !quiz.id) return;
+    const list = this.getLocalQuizzes();
+    const idx = list.findIndex(q => q.id === quiz.id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...quiz };
+    } else {
+      list.push(quiz);
+    }
+    this.setLocalQuizzes(list);
+
+    // Sync in background to server so other devices / container updates receive it
+    try {
+      apiRequest('/quizzes/sync', {
+        method: 'POST',
+        body: JSON.stringify({ quizzes: [quiz] })
+      }).catch(() => {});
+    } catch (e) {}
+  },
+
+  removeQuiz(quizId) {
+    const targetId = parseInt(quizId);
+    const list = this.getLocalQuizzes().filter(q => q.id !== targetId);
+    this.setLocalQuizzes(list);
+  },
+
+  async getMergedQuizzes() {
+    let localList = this.getLocalQuizzes();
+    let serverList = [];
+
+    try {
+      const res = await apiRequest('/quizzes');
+      if (res && res.success && Array.isArray(res.data)) {
+        serverList = res.data;
+      }
+    } catch (e) {
+      console.warn('QuizStore getMergedQuizzes server fetch error', e);
+    }
+
+    const mergedMap = new Map();
+
+    // 1. Populate from local
+    localList.forEach(q => {
+      if (q && q.id) mergedMap.set(q.id, q);
+    });
+
+    // 2. Merge server list
+    serverList.forEach(sq => {
+      if (!sq || !sq.id) return;
+      const existing = mergedMap.get(sq.id);
+      if (!existing) {
+        mergedMap.set(sq.id, sq);
+      } else {
+        const mergedQuestions = (existing.questions && existing.questions.length > (sq.questions?.length || 0))
+          ? existing.questions
+          : (sq.questions || existing.questions);
+
+        mergedMap.set(sq.id, {
+          ...sq,
+          ...existing,
+          totalQuestions: mergedQuestions ? mergedQuestions.length : (existing.questionCount || sq.totalQuestions),
+          questionCount: mergedQuestions ? mergedQuestions.length : (existing.questionCount || sq.questionCount),
+          questions: mergedQuestions
+        });
+      }
+    });
+
+    const result = Array.from(mergedMap.values()).sort((a, b) => a.id - b.id);
+    this.setLocalQuizzes(result);
+
+    // If local had quizzes missing from server list, sync them back to backend
+    const missingOnServer = result.filter(q => !serverList.some(sq => sq.id === q.id));
+    if (missingOnServer.length > 0) {
+      apiRequest('/quizzes/sync', {
+        method: 'POST',
+        body: JSON.stringify({ quizzes: missingOnServer })
+      }).catch(() => {});
+    }
+
+    return result;
+  }
+};
+
+/**
+ * Live Database Connectivity Status Bar & Auto-Reconnect
+ */
 async function checkDatabaseStatus() {
   try {
     const res = await apiRequest('/system/db-status');

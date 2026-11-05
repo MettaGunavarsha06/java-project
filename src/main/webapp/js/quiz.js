@@ -34,17 +34,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initializeQuiz(quizId) {
-  // Look in cachedList first
+  // Look in QuizStore first
   let cachedQuiz = null;
   try {
-    const cachedList = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
-    cachedQuiz = cachedList.find(q => q.id === parseInt(quizId));
+    if (typeof QuizStore !== 'undefined') {
+      cachedQuiz = QuizStore.getLocalQuizzes().find(q => q.id === parseInt(quizId));
+    }
+    if (!cachedQuiz) {
+      const cachedList = JSON.parse(localStorage.getItem('saved_quizzes') || '[]');
+      cachedQuiz = cachedList.find(q => q.id === parseInt(quizId));
+    }
   } catch (e) {}
+
+  // If not in local storage, check if URL has metadata parameters (e.g. from QR code scan or shared link)
+  if (!cachedQuiz) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const titleParam = urlParams.get('title');
+    if (titleParam) {
+      cachedQuiz = {
+        id: parseInt(quizId),
+        title: decodeURIComponent(titleParam),
+        description: 'Comprehensive Examination Assessment',
+        duration: parseInt(urlParams.get('dur')) || 10,
+        totalMarks: parseInt(urlParams.get('marks')) || 50,
+        questionCount: parseInt(urlParams.get('qc')) || 10
+      };
+      if (typeof QuizStore !== 'undefined') {
+        QuizStore.saveQuiz(cachedQuiz);
+      }
+    }
+  }
 
   // 1. Try to start quiz on backend to trigger server-side timer thread
   let startRes = await apiRequest(`/student/quiz/${quizId}/start`, { 
     method: 'POST',
-    body: cachedQuiz ? JSON.stringify({ quiz: cachedQuiz, questions: cachedQuiz.questions }) : undefined
+    body: cachedQuiz ? JSON.stringify({ quiz: cachedQuiz, quizTitle: cachedQuiz.title, questions: cachedQuiz.questions }) : undefined
   });
 
   // Fallback: Check local storage for quiz if backend doesn't have it (e.g., custom admin quiz on serverless cold restart)

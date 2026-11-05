@@ -514,9 +514,9 @@
     }
 
     async function loadStudentQuizzes() {
-      const res = await apiRequest('/quizzes');
-      if (res.success && res.data) {
-        renderStudentQuizzes(res.data);
+      const quizzes = await QuizStore.getMergedQuizzes();
+      if (quizzes) {
+        renderStudentQuizzes(quizzes);
       }
     }
 

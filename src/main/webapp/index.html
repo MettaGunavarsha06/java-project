@@ -156,15 +156,15 @@
     });
 
     async function loadQuizzes() {
-      const res = await apiRequest('/quizzes');
+      const quizzes = await QuizStore.getMergedQuizzes();
       const grid = document.getElementById('quizzes-grid');
 
-      if (!res.success || !res.data || res.data.length === 0) {
+      if (!quizzes || quizzes.length === 0) {
         grid.innerHTML = '<div class="col-12 text-center py-5 text-muted">No quizzes currently published.</div>';
         return;
       }
 
-      allQuizzes = res.data;
+      allQuizzes = quizzes;
       renderQuizzesGrid(allQuizzes);
     }
 
