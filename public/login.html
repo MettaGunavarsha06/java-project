@@ -105,14 +105,27 @@
   <script src="js/app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirect = urlParams.get('redirect');
+
       // Auto-restore session if already logged in previously
       if (Auth.isLoggedIn()) {
+        if (redirect) {
+          window.location.href = redirect;
+          return;
+        }
         const user = Auth.getUser();
         if (user && user.role === 'ADMIN') {
           window.location.href = 'admin-dashboard.html';
         } else if (user) {
           window.location.href = 'student-dashboard.html';
         }
+        return;
+      }
+
+      if (redirect) {
+        const regLink = document.querySelector('a[href="register.html"]');
+        if (regLink) regLink.href = `register.html?redirect=${encodeURIComponent(redirect)}`;
       }
     });
 

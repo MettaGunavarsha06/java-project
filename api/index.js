@@ -285,13 +285,14 @@ function extractToken(req) {
  * Main Request Handler for Vercel Serverless Function
  */
 module.exports = async function handler(req, res) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.statusCode = 204;
-    return res.end();
-  }
+  try {
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.statusCode = 204;
+      return res.end();
+    }
 
   const host = req.headers.host || 'localhost';
   const url = new URL(req.url, `http://${host}`);
@@ -501,10 +502,27 @@ module.exports = async function handler(req, res) {
       quiz = body.quiz;
       quizzes.push(quiz);
     }
-    if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
-    if (body && body.questions && body.questions.length > quiz.questions.length) {
-      quiz.questions = body.questions;
+    if (!quiz) {
+      // Auto-create standard assessment for this ID if not in memory (e.g. Lambda cold start from QR code)
+      const qCount = (body && body.questions && body.questions.length) ? body.questions.length : 10;
+      quiz = {
+        id: qId,
+        title: (body && body.quizTitle) || `Assessment #${qId}`,
+        description: 'Comprehensive assessment covering Java and Database Concepts',
+        duration: 10,
+        totalMarks: 50,
+        questionCount: qCount,
+        totalQuestions: qCount,
+        questions: generateQuestionsForQuiz(qId, qCount)
+      };
+      quizzes.push(quiz);
     }
+
+    // Ensure all questions have proper options and structure
+    if (!quiz.questions || quiz.questions.length === 0) {
+      quiz.questions = generateQuestionsForQuiz(quiz.id, 10);
+    }
+
     const sessionId = 'sess_' + Math.random().toString(36).substring(2);
     return sendJson(res, 200, {
       success: true,
@@ -540,77 +558,116 @@ module.exports = async function handler(req, res) {
   // ---------------- STUDENT SUBMISSION & RESULTS ----------------
   const quizSubmitMatch = path.match(/^\/api\/(?:student\/submit|student\/quiz\/(\d+)\/submit)$/);
   if (quizSubmitMatch && req.method === 'POST') {
-    const quizIdParam = quizSubmitMatch[1] ? parseInt(quizSubmitMatch[1]) : parseInt(body.quizId);
+    const quizIdParam = quizSubmitMatch[1] ? parseInt(quizSubmitMatch[1]) : parseInt(body.quizId || 1);
     const { studentId, answers = {} } = body;
     let quiz = quizzes.find(q => q.id === quizIdParam);
-    if (!quiz && body.questions && body.questions.length > 0) {
+
+    // If quiz is not in memory on this serverless instance (e.g. mobile QR scan landed on different lambda worker)
+    if (!quiz) {
+      const qCount = (body.questions && Array.isArray(body.questions) && body.questions.length > 0)
+        ? body.questions.length
+        : 10;
       quiz = {
         id: quizIdParam,
-        title: body.quizTitle || 'Assessment',
-        description: 'Examination evaluation',
+        title: body.quizTitle || `Assessment #${quizIdParam}`,
+        description: 'Practical Examination Evaluation',
         duration: 10,
-        totalMarks: body.totalMarks || 50,
-        questions: body.questions
+        totalMarks: parseInt(body.totalMarks) || 50,
+        questions: generateQuestionsForQuiz(quizIdParam, qCount)
       };
       quizzes.push(quiz);
     }
-    if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
 
+    // Guarantee every question in quiz.questions has a valid correctAnswer
+    if (quiz.questions && Array.isArray(quiz.questions)) {
+      quiz.questions.forEach((q, idx) => {
+        if (!q.correctAnswer) {
+          const match = MASTER_QUESTION_BANK.find(m => m.text.toLowerCase() === (q.questionText || '').trim().toLowerCase());
+          q.correctAnswer = match ? match.ans : (MASTER_QUESTION_BANK[idx % MASTER_QUESTION_BANK.length]?.ans || 'B');
+        }
+      });
+    }
+
+    // If client supplied more questions than quiz.questions, append extra questions with resolved answers
     if (body.questions && Array.isArray(body.questions) && body.questions.length > quiz.questions.length) {
-      quiz.questions = body.questions;
+      for (let i = quiz.questions.length; i < body.questions.length; i++) {
+        const bq = body.questions[i];
+        const match = MASTER_QUESTION_BANK.find(m => m.text.toLowerCase() === (bq.questionText || '').trim().toLowerCase());
+        const ans = bq.correctAnswer || (match ? match.ans : (MASTER_QUESTION_BANK[i % MASTER_QUESTION_BANK.length]?.ans || 'B'));
+        quiz.questions.push({
+          id: bq.id || (i + 1),
+          quizId: quiz.id,
+          questionText: bq.questionText || `Question #${i + 1}`,
+          optionA: bq.optionA || 'Option A',
+          optionB: bq.optionB || 'Option B',
+          optionC: bq.optionC || 'Option C',
+          optionD: bq.optionD || 'Option D',
+          correctAnswer: ans.toUpperCase()
+        });
+      }
     }
 
     let correctCount = 0;
     let wrongCount = 0;
     let unansweredCount = 0;
 
-    quiz.questions.forEach(q => {
-      const selected = answers[q.id];
-      if (!selected) {
+    quiz.questions.forEach((q, idx) => {
+      const selected = answers[q.id] || answers[String(q.id)];
+      const correctAns = (q.correctAnswer || (MASTER_QUESTION_BANK[idx % MASTER_QUESTION_BANK.length]?.ans) || 'B').toString().trim().toUpperCase();
+      const userAns = selected ? String(selected).trim().toUpperCase() : null;
+
+      if (!userAns) {
         unansweredCount++;
-      } else if (selected.toUpperCase() === q.correctAnswer.toUpperCase()) {
+      } else if (userAns === correctAns) {
         correctCount++;
       } else {
         wrongCount++;
       }
     });
 
-    const marksPerQ = quiz.questions.length > 0 ? quiz.totalMarks / quiz.questions.length : 0;
+    const totalQCount = quiz.questions.length;
+    const marksPerQ = totalQCount > 0 ? quiz.totalMarks / totalQCount : 0;
     const score = Math.round(correctCount * marksPerQ);
     const percentage = quiz.totalMarks > 0 ? Math.round((score / quiz.totalMarks) * 1000) / 10 : 0;
     const passed = percentage >= 50;
 
-    const studentUser = users.find(u => u.id === parseInt(studentId)) || currentUser || users[1];
+    const sId = parseInt(body.studentId) || (currentUser ? currentUser.id : (users[1] ? users[1].id : 2));
+    const matchedUser = users.find(u => u.id === sId);
+    const sName = body.studentName || (currentUser ? currentUser.name : (matchedUser ? matchedUser.name : 'Candidate Student'));
+    const sEmail = body.studentEmail || (currentUser ? currentUser.email : (matchedUser ? matchedUser.email : 'student@quiz.com'));
+
     const timeTaken = (body.timeTakenSeconds !== undefined && body.timeTakenSeconds !== null) ? parseInt(body.timeTakenSeconds) : 10;
     const now = new Date();
     const formattedDate = now.toISOString().replace('T', ' ').substring(0, 19);
 
-    // Build question reviews
+    // Build question reviews safely
     const reviews = quiz.questions.map((q, idx) => {
-      const selected = answers[q.id] || null;
-      const isCorrect = selected && q.correctAnswer && (selected.toUpperCase() === q.correctAnswer.toUpperCase());
+      const selected = answers[q.id] || answers[String(q.id)] || null;
+      const userAns = selected ? String(selected).trim().toUpperCase() : null;
+      const correctAns = (q.correctAnswer || (MASTER_QUESTION_BANK[idx % MASTER_QUESTION_BANK.length]?.ans) || 'B').toString().trim().toUpperCase();
+      const isCorrect = userAns !== null && userAns === correctAns;
       return {
         questionId: q.id,
         questionIndex: idx + 1,
-        questionText: q.questionText,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
-        correctAnswer: q.correctAnswer,
-        selectedAnswer: selected || null,
-        userAnswer: selected || 'Not Answered',
-        correct: !!isCorrect,
-        isCorrect: !!isCorrect
+        questionText: q.questionText || `Question #${idx + 1}`,
+        optionA: q.optionA || 'Option A',
+        optionB: q.optionB || 'Option B',
+        optionC: q.optionC || 'Option C',
+        optionD: q.optionD || 'Option D',
+        correctAnswer: correctAns,
+        selectedAnswer: userAns,
+        userAnswer: userAns || 'Not Answered',
+        correct: isCorrect,
+        isCorrect: isCorrect
       };
     });
 
     const newAttempt = {
       id: attempts.length + 1,
       attemptId: attempts.length + 1,
-      studentId: studentUser.id,
-      studentName: studentUser.name,
-      studentEmail: studentUser.email,
+      studentId: sId,
+      studentName: sName,
+      studentEmail: sEmail,
       quizId: quiz.id,
       quizTitle: quiz.title,
       score,
@@ -622,6 +679,7 @@ module.exports = async function handler(req, res) {
       correctAnswers: correctCount,
       wrongAnswers: wrongCount,
       unansweredQuestions: unansweredCount,
+      totalQuestions: totalQCount,
       passed,
       answers,
       reviews
@@ -950,4 +1008,12 @@ module.exports = async function handler(req, res) {
       routeMatches: req.headers['x-now-route-matches'] || null
     }
   });
+  } catch (globalErr) {
+    console.error('SERVERLESS GLOBAL ERROR:', globalErr);
+    return sendJson(res, 500, {
+      success: false,
+      message: 'Server processing error: ' + (globalErr.message || 'Unknown server error'),
+      error: globalErr.toString()
+    });
+  }
 };

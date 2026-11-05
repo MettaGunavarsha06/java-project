@@ -292,8 +292,9 @@
             Auth.setSession(result.data.token, result.data.user);
           }
 
+          const redirect = new URLSearchParams(window.location.search).get('redirect');
           setTimeout(() => {
-            window.location.href = 'student-dashboard.html';
+            window.location.href = redirect || 'student-dashboard.html';
           }, 1200);
         } else {
           alertBox.textContent = result.message || 'Registration failed.';
