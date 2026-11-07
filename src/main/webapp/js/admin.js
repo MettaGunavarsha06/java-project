@@ -186,49 +186,6 @@ function renderPerformanceChart(stats) {
   });
 }
 
-// ---------------- QUIZ MANAGEMENT ----------------
-
-async function loadQuizzesTable() {
-  const quizzes = await QuizStore.getMergedQuizzes();
-  const tbody = document.getElementById('admin-quizzes-tbody');
-  if (!tbody) return;
-
-  if (!quizzes || quizzes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No quizzes available. Click "Create Quiz" above.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = quizzes.map(q => `
-    <tr>
-      <td class="fw-bold">#${q.id}</td>
-      <td>
-        <div class="fw-bold text-dark">${escapeHtml(q.title)}</div>
-        <div class="small text-muted text-truncate" style="max-width: 320px;">${escapeHtml(q.description)}</div>
-      </td>
-      <td><span class="badge bg-light text-dark border">${q.duration} Mins</span></td>
-      <td><span class="badge bg-primary">${q.totalMarks} Marks</span></td>
-      <td><span class="badge bg-info text-dark">${q.questionCount || (q.questions ? q.questions.length : 0)} Questions</span></td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-outline-info me-1" title="Share Quiz Link & QR Code" onclick="openShareQuizModal(${q.id}, '${escapeHtml(q.title)}', false)">
-          <i class="bi bi-qr-code me-1"></i> Share / QR
-        </button>
-        <button class="btn btn-sm btn-outline-primary me-1" onclick="manageQuestions(${q.id}, '${escapeHtml(q.title)}')">
-          <i class="bi bi-list-check me-1"></i> Questions
-        </button>
-        <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditQuizModal(${q.id})">
-          <i class="bi bi-pencil"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteQuiz(${q.id})">
-          <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-success" title="Export Report" onclick="exportQuizReport(${q.id})">
-          <i class="bi bi-file-earmark-arrow-down"></i>
-        </button>
-      </td>
-    </tr>
-  `).join('');
-}
-
 function openCreateQuizModal() {
   document.getElementById('quizModalTitle').innerText = 'Create New Quiz';
   document.getElementById('quizForm').reset();
