@@ -57,7 +57,10 @@ async function initializeQuiz(quizId) {
         description: 'Comprehensive Examination Assessment',
         duration: parseInt(urlParams.get('dur')) || 10,
         totalMarks: parseInt(urlParams.get('marks')) || 50,
-        questionCount: parseInt(urlParams.get('qc')) || 10
+        questionCount: parseInt(urlParams.get('qc')) || 10,
+        scheduleType: urlParams.get('st') ? 'SCHEDULED' : 'ALWAYS_AVAILABLE',
+        scheduledStartTime: urlParams.get('st') ? decodeURIComponent(urlParams.get('st')) : null,
+        scheduledEndTime: urlParams.get('et') ? decodeURIComponent(urlParams.get('et')) : null
       };
       if (typeof QuizStore !== 'undefined') {
         QuizStore.saveQuiz(cachedQuiz);
@@ -71,9 +74,36 @@ async function initializeQuiz(quizId) {
     body: cachedQuiz ? JSON.stringify({ quiz: cachedQuiz, quizTitle: cachedQuiz.title, questions: cachedQuiz.questions }) : undefined
   });
 
+  // If backend specifically returned a schedule / window rejection
+  if (startRes && !startRes.success && startRes.message && 
+      (startRes.message.includes('scheduled') || startRes.message.includes('closed') || startRes.message.includes('deadline') || startRes.message.includes('not started'))) {
+    alert(startRes.message);
+    window.location.href = 'student-dashboard.html';
+    return;
+  }
+
   // Fallback: Check local storage for quiz if backend doesn't have it (e.g., custom admin quiz on serverless cold restart)
   if (!startRes || !startRes.success || !startRes.data) {
     if (cachedQuiz) {
+      // Check local schedule timing
+      const now = Date.now();
+      if (cachedQuiz.scheduleType === 'SCHEDULED' && cachedQuiz.scheduledStartTime) {
+        const st = new Date(cachedQuiz.scheduledStartTime).getTime();
+        if (!isNaN(st) && now < st) {
+          alert(`This examination is scheduled for ${new Date(st).toLocaleString()}. Exam has not started yet.`);
+          window.location.href = 'student-dashboard.html';
+          return;
+        }
+        if (cachedQuiz.scheduledEndTime) {
+          const et = new Date(cachedQuiz.scheduledEndTime).getTime();
+          if (!isNaN(et) && now > et) {
+            alert(`This examination deadline passed on ${new Date(et).toLocaleString()}. This exam is closed.`);
+            window.location.href = 'student-dashboard.html';
+            return;
+          }
+        }
+      }
+
       startRes = {
         success: true,
         data: {

@@ -287,6 +287,10 @@ const QuizStore = {
           ...existing,
           totalQuestions: mergedQuestions ? mergedQuestions.length : (existing.questionCount || sq.totalQuestions),
           questionCount: mergedQuestions ? mergedQuestions.length : (existing.questionCount || sq.questionCount),
+          scheduleType: existing.scheduleType || sq.scheduleType || 'ALWAYS_AVAILABLE',
+          scheduledStartTime: existing.scheduledStartTime !== undefined ? existing.scheduledStartTime : sq.scheduledStartTime,
+          scheduledEndTime: existing.scheduledEndTime !== undefined ? existing.scheduledEndTime : sq.scheduledEndTime,
+          attemptCount: sq.attemptCount !== undefined ? sq.attemptCount : (existing.attemptCount || 0),
           questions: mergedQuestions
         });
       }

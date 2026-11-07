@@ -291,11 +291,37 @@ const DEFAULT_QUIZZES = [
 
 let quizzes = readPersistedQuizzes() || DEFAULT_QUIZZES;
 
-let attempts = [
+const ATTEMPTS_STORAGE_PATH = path.join(TMP_DIR, 'quizmaster_attempts.json');
+
+function readPersistedAttempts() {
+  try {
+    if (fs.existsSync(ATTEMPTS_STORAGE_PATH)) {
+      const content = fs.readFileSync(ATTEMPTS_STORAGE_PATH, 'utf8');
+      const list = JSON.parse(content);
+      if (Array.isArray(list) && list.length > 0) {
+        return list;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function persistAttemptsToDisk(list) {
+  try {
+    if (!fs.existsSync(TMP_DIR)) {
+      fs.mkdirSync(TMP_DIR, { recursive: true });
+    }
+    fs.writeFileSync(ATTEMPTS_STORAGE_PATH, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+const DEFAULT_ATTEMPTS = [
   { id: 1, studentId: 2, studentName: "Alex Johnson", studentEmail: "alex@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 50, totalMarks: 50, percentage: 100.0, passed: true, correctAnswers: 5, wrongAnswers: 0, unansweredQuestions: 0, timeTakenSeconds: 180, attemptDate: "2026-11-02 15:30:00" },
   { id: 2, studentId: 3, studentName: "Sophia Chen", studentEmail: "sophia@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 40, totalMarks: 50, percentage: 80.0, passed: true, correctAnswers: 4, wrongAnswers: 1, unansweredQuestions: 0, timeTakenSeconds: 210, attemptDate: "2026-11-03 11:00:00" },
   { id: 3, studentId: 4, studentName: "Liam Davis", studentEmail: "liam@student.com", quizId: 1, quizTitle: "Java Core & OOP Fundamentals", score: 30, totalMarks: 50, percentage: 60.0, passed: true, correctAnswers: 3, wrongAnswers: 2, unansweredQuestions: 0, timeTakenSeconds: 240, attemptDate: "2026-11-04 09:20:00" }
 ];
+
+let attempts = readPersistedAttempts() || DEFAULT_ATTEMPTS;
 
 const sessions = new Map();
 
@@ -519,6 +545,9 @@ module.exports = async function handler(req, res) {
             totalMarks: parseInt(cq.totalMarks) || quizzes[idx].totalMarks || 50,
             questionCount: qCount,
             totalQuestions: qCount,
+            scheduleType: cq.scheduleType || quizzes[idx].scheduleType || 'ALWAYS_AVAILABLE',
+            scheduledStartTime: cq.scheduledStartTime !== undefined ? cq.scheduledStartTime : quizzes[idx].scheduledStartTime,
+            scheduledEndTime: cq.scheduledEndTime !== undefined ? cq.scheduledEndTime : quizzes[idx].scheduledEndTime,
             questions: (qList.length >= (quizzes[idx].questions?.length || 0)) ? qList : quizzes[idx].questions
           };
         } else {
@@ -530,6 +559,9 @@ module.exports = async function handler(req, res) {
             totalMarks: parseInt(cq.totalMarks) || 50,
             questionCount: qCount,
             totalQuestions: qCount,
+            scheduleType: cq.scheduleType || (cq.scheduledStartTime ? 'SCHEDULED' : 'ALWAYS_AVAILABLE'),
+            scheduledStartTime: cq.scheduledStartTime || null,
+            scheduledEndTime: cq.scheduledEndTime || null,
             questions: qList
           });
         }
@@ -548,6 +580,10 @@ module.exports = async function handler(req, res) {
       totalMarks: q.totalMarks,
       totalQuestions: q.questions ? q.questions.length : 0,
       questionCount: q.questions ? q.questions.length : 0,
+      scheduleType: q.scheduleType || (q.scheduledStartTime ? 'SCHEDULED' : 'ALWAYS_AVAILABLE'),
+      scheduledStartTime: q.scheduledStartTime || null,
+      scheduledEndTime: q.scheduledEndTime || null,
+      attemptCount: attempts.filter(a => a.quizId === q.id).length,
       questions: q.questions
     }));
     return sendJson(res, 200, { success: true, data: safeQuizzes });
@@ -555,7 +591,12 @@ module.exports = async function handler(req, res) {
 
   if (path === '/api/quizzes/search' && req.method === 'GET') {
     const keyword = (url.searchParams.get('q') || '').toLowerCase();
-    const filtered = quizzes.filter(q => q.title.toLowerCase().includes(keyword) || q.description.toLowerCase().includes(keyword));
+    const filtered = quizzes
+      .filter(q => q.title.toLowerCase().includes(keyword) || q.description.toLowerCase().includes(keyword))
+      .map(q => ({
+        ...q,
+        attemptCount: attempts.filter(a => a.quizId === q.id).length
+      }));
     return sendJson(res, 200, { success: true, data: filtered });
   }
 
@@ -566,6 +607,7 @@ module.exports = async function handler(req, res) {
     if (!quiz) return sendJson(res, 404, { success: false, message: 'Quiz not found' });
     quiz.totalQuestions = quiz.questions ? quiz.questions.length : 0;
     quiz.questionCount = quiz.questions ? quiz.questions.length : 0;
+    quiz.attemptCount = attempts.filter(a => a.quizId === quiz.id).length;
     return sendJson(res, 200, { success: true, data: quiz });
   }
 
@@ -618,6 +660,29 @@ module.exports = async function handler(req, res) {
       quiz.questions = generateQuestionsForQuiz(quiz.id, 10);
     }
 
+    // Validate schedule timing
+    const now = Date.now();
+    if (quiz.scheduleType === 'SCHEDULED' && quiz.scheduledStartTime) {
+      const startTime = new Date(quiz.scheduledStartTime).getTime();
+      if (!isNaN(startTime) && now < startTime) {
+        const d = new Date(startTime);
+        return sendJson(res, 400, {
+          success: false,
+          message: `This examination is scheduled for ${d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}. Exam has not started yet.`
+        });
+      }
+      if (quiz.scheduledEndTime) {
+        const endTime = new Date(quiz.scheduledEndTime).getTime();
+        if (!isNaN(endTime) && now > endTime) {
+          const d = new Date(endTime);
+          return sendJson(res, 400, {
+            success: false,
+            message: `This examination deadline passed on ${d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}. The exam is now closed.`
+          });
+        }
+      }
+    }
+
     const sessionId = 'sess_' + Math.random().toString(36).substring(2);
     return sendJson(res, 200, {
       success: true,
@@ -636,6 +701,9 @@ module.exports = async function handler(req, res) {
           totalMarks: quiz.totalMarks,
           questionCount: quiz.questions.length,
           totalQuestions: quiz.questions.length,
+          scheduleType: quiz.scheduleType || (quiz.scheduledStartTime ? 'SCHEDULED' : 'ALWAYS_AVAILABLE'),
+          scheduledStartTime: quiz.scheduledStartTime || null,
+          scheduledEndTime: quiz.scheduledEndTime || null,
           questions: quiz.questions.map(q => ({
             id: q.id,
             quizId: q.quizId,
@@ -781,6 +849,7 @@ module.exports = async function handler(req, res) {
     };
 
     attempts.unshift(newAttempt);
+    persistAttemptsToDisk(attempts);
 
     return sendJson(res, 200, {
       success: true,
@@ -967,7 +1036,20 @@ module.exports = async function handler(req, res) {
   }
 
   if (path === '/api/admin/attempts' && req.method === 'GET') {
+    const qIdParam = url.searchParams.get('quizId');
+    if (qIdParam) {
+      const qId = parseInt(qIdParam);
+      const filtered = attempts.filter(a => a.quizId === qId);
+      return sendJson(res, 200, { success: true, data: filtered });
+    }
     return sendJson(res, 200, { success: true, data: attempts });
+  }
+
+  const quizAttemptsMatch = path.match(/^\/api\/admin\/quizzes\/(\d+)\/attempts$/);
+  if (quizAttemptsMatch && req.method === 'GET') {
+    const qId = parseInt(quizAttemptsMatch[1]);
+    const filtered = attempts.filter(a => a.quizId === qId);
+    return sendJson(res, 200, { success: true, data: filtered });
   }
 
   if (path === '/api/admin/stats' && req.method === 'GET') {
@@ -994,7 +1076,7 @@ module.exports = async function handler(req, res) {
 
   // ---------------- ADMIN QUIZ & QUESTION CRUD ----------------
   if (path === '/api/admin/quizzes' && req.method === 'POST') {
-    const { title, description, duration, totalMarks, questionCount } = body;
+    const { title, description, duration, totalMarks, questionCount, scheduleType, scheduledStartTime, scheduledEndTime } = body;
     const newId = quizzes.length > 0 ? Math.max(...quizzes.map(q => q.id)) + 1 : 1;
     const count = Math.min(100, Math.max(1, parseInt(questionCount) || 10));
     const newQuiz = {
@@ -1005,6 +1087,9 @@ module.exports = async function handler(req, res) {
       totalMarks: parseInt(totalMarks) || 50,
       questionCount: count,
       totalQuestions: count,
+      scheduleType: scheduleType || (scheduledStartTime ? 'SCHEDULED' : 'ALWAYS_AVAILABLE'),
+      scheduledStartTime: scheduledStartTime || null,
+      scheduledEndTime: scheduledEndTime || null,
       questions: generateQuestionsForQuiz(newId, count)
     };
     quizzes.push(newQuiz);
@@ -1021,6 +1106,9 @@ module.exports = async function handler(req, res) {
     if (body.description !== undefined) quiz.description = body.description;
     if (body.duration !== undefined) quiz.duration = parseInt(body.duration) || 10;
     if (body.totalMarks !== undefined) quiz.totalMarks = parseInt(body.totalMarks) || 50;
+    if (body.scheduleType !== undefined) quiz.scheduleType = body.scheduleType;
+    if (body.scheduledStartTime !== undefined) quiz.scheduledStartTime = body.scheduledStartTime;
+    if (body.scheduledEndTime !== undefined) quiz.scheduledEndTime = body.scheduledEndTime;
     if (body.questionCount !== undefined) {
       const targetCount = parseInt(body.questionCount);
       if (!isNaN(targetCount) && targetCount > 0 && targetCount !== quiz.questions.length) {

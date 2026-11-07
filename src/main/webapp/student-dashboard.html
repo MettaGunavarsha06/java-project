@@ -537,36 +537,65 @@
         return;
       }
 
-      container.innerHTML = quizzes.map(q => `
-        <div class="col-md-6 col-lg-4">
-          <div class="card-custom h-100 d-flex flex-column">
-            <div class="card-custom-body flex-grow-1">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1">
-                  <i class="bi bi-clock me-1"></i> ${q.duration} Mins
-                </span>
-                <span class="badge bg-primary px-2 py-1">
-                  ${q.totalMarks} Marks
-                </span>
+      const now = Date.now();
+
+      container.innerHTML = quizzes.map(q => {
+        const isScheduled = q.scheduleType === 'SCHEDULED' && q.scheduledStartTime;
+        const startTime = isScheduled ? new Date(q.scheduledStartTime).getTime() : null;
+        const endTime = (isScheduled && q.scheduledEndTime) ? new Date(q.scheduledEndTime).getTime() : null;
+
+        let scheduleBadge = '';
+        let actionBtn = '';
+
+        if (!isScheduled) {
+          scheduleBadge = '<span class="badge bg-light text-success border border-success-subtle"><i class="bi bi-unlock-fill me-1"></i> Always Available</span>';
+          actionBtn = `<a href="quiz-view.html?id=${q.id}" class="btn btn-sm btn-primary-custom">Start Quiz <i class="bi bi-play-fill ms-1"></i></a>`;
+        } else if (startTime && now < startTime) {
+          const startStr = new Date(startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          scheduleBadge = `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Opens on ${startStr}"><i class="bi bi-calendar-event me-1"></i> Starts: ${startStr}</span>`;
+          actionBtn = `<button class="btn btn-sm btn-secondary" disabled title="Exam opens on ${startStr}"><i class="bi bi-clock me-1"></i> Opens on ${startStr}</button>`;
+        } else if (endTime && now > endTime) {
+          const endStr = new Date(endTime).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          scheduleBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" title="Ended on ${endStr}"><i class="bi bi-clock-history me-1"></i> Closed: ${endStr}</span>`;
+          actionBtn = `<button class="btn btn-sm btn-secondary" disabled><i class="bi bi-lock-fill me-1"></i> Exam Closed</button>`;
+        } else {
+          let deadlineStr = endTime ? 'Closes: ' + new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active Window';
+          scheduleBadge = `<span class="badge bg-success"><i class="bi bi-broadcast me-1"></i> Live Now (${deadlineStr})</span>`;
+          actionBtn = `<a href="quiz-view.html?id=${q.id}" class="btn btn-sm btn-success">Take Live Exam <i class="bi bi-play-fill ms-1"></i></a>`;
+        }
+
+        return `
+          <div class="col-md-6 col-lg-4">
+            <div class="card-custom h-100 d-flex flex-column">
+              <div class="card-custom-body flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1">
+                    <i class="bi bi-clock me-1"></i> ${q.duration} Mins
+                  </span>
+                  <span class="badge bg-primary px-2 py-1">
+                    ${q.totalMarks} Marks
+                  </span>
+                </div>
+                <div class="mb-2">
+                  ${scheduleBadge}
+                </div>
+                <h5 class="fw-bold text-dark mb-2">${escapeHtml(q.title)}</h5>
+                <p class="small text-muted mb-3" style="min-height: 44px;">
+                  ${escapeHtml(q.description || 'Evaluation covering practical core concepts.')}
+                </p>
+                <div class="d-flex align-items-center gap-3 text-muted small pt-2 border-top">
+                  <span><i class="bi bi-question-circle me-1 text-primary"></i> ${q.questionCount || (q.questions ? q.questions.length : 0)} Questions</span>
+                  <span><i class="bi bi-shield-check text-success me-1"></i> Auto-Graded</span>
+                </div>
               </div>
-              <h5 class="fw-bold text-dark mb-2">${escapeHtml(q.title)}</h5>
-              <p class="small text-muted mb-3" style="min-height: 44px;">
-                ${escapeHtml(q.description || 'Evaluation covering practical core concepts.')}
-              </p>
-              <div class="d-flex align-items-center gap-3 text-muted small pt-2 border-top">
-                <span><i class="bi bi-question-circle me-1 text-primary"></i> ${q.questionCount || (q.questions ? q.questions.length : 0)} Questions</span>
-                <span><i class="bi bi-shield-check text-success me-1"></i> Auto-Graded</span>
+              <div class="p-3 bg-light border-top rounded-bottom d-flex justify-content-between align-items-center">
+                <span class="small text-muted"><i class="bi bi-stopwatch text-warning me-1"></i> Timed</span>
+                ${actionBtn}
               </div>
-            </div>
-            <div class="p-3 bg-light border-top rounded-bottom d-flex justify-content-between align-items-center">
-              <span class="small text-muted"><i class="bi bi-stopwatch text-warning me-1"></i> Timed</span>
-              <a href="quiz-view.html?id=${q.id}" class="btn btn-sm btn-primary-custom">
-                Start Quiz <i class="bi bi-play-fill ms-1"></i>
-              </a>
             </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function renderAttemptsHistory(attempts) {

@@ -153,14 +153,16 @@
                 <tr>
                   <th style="width: 70px;">ID</th>
                   <th>Quiz Title & Description</th>
+                  <th>Schedule Window</th>
                   <th>Duration</th>
                   <th>Total Marks</th>
                   <th>Questions</th>
+                  <th>Attempts & Results</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody id="admin-quizzes-tbody">
-                <tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>
+                <tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -273,6 +275,30 @@
                   <option value="100">100 Questions (Max Bank)</option>
                 </select>
                 <div class="form-text small">Select the exact number of examination questions generated for candidates.</div>
+              </div>
+              <div class="col-12 mt-3 pt-3 border-top">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label class="form-label fw-semibold small mb-0">
+                    <i class="bi bi-calendar-event me-1 text-primary"></i> Examination Schedule (Time, Date & Year)
+                  </label>
+                  <span class="badge bg-light text-primary border" id="schedule-status-indicator">Always Available</span>
+                </div>
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="quiz-schedule-toggle" onchange="toggleScheduleFields(this.checked)">
+                  <label class="form-check-label small" for="quiz-schedule-toggle">Schedule exam for a specific date, time & year</label>
+                </div>
+                <div id="quiz-schedule-fields" class="row g-2 d-none p-3 bg-light rounded border">
+                  <div class="col-sm-6">
+                    <label class="form-label fw-semibold small text-dark"><i class="bi bi-play-circle text-success me-1"></i> Start Date & Time (Opens)</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="quiz-start-time-input">
+                    <div class="form-text small" style="font-size:0.75rem;">Candidates cannot start before this date & time</div>
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label fw-semibold small text-dark"><i class="bi bi-stop-circle text-danger me-1"></i> End Date & Time (Deadline)</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="quiz-end-time-input">
+                    <div class="form-text small" style="font-size:0.75rem;">Exam closes automatically after this deadline</div>
+                  </div>
+                </div>
               </div>
             </div>
           </form>
@@ -553,6 +579,97 @@
         </div>
         <div class="modal-footer bg-light border-top">
           <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close Record</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Specific Quiz Attempts & Results Modal -->
+  <div class="modal fade" id="quizAttemptsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content modal-content-custom">
+        <div class="modal-header bg-light">
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="modal-title fw-bold mb-0" id="quizAttemptsModalTitle">Exam Results & Submissions</h5>
+              <span class="badge bg-primary" id="quizAttemptsModalBadge">0 Submissions</span>
+            </div>
+            <p class="text-muted small mb-0" id="quizAttemptsModalSubtitle">Showing candidate attempts, scores, and evaluation breakdown for this exam</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- Summary Cards for this Quiz -->
+          <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-3">
+              <div class="stat-card">
+                <div>
+                  <div class="stat-value text-primary" id="qa-total-attempts">0</div>
+                  <div class="stat-label">Total Attempts</div>
+                </div>
+                <div class="stat-icon text-primary bg-primary-subtle"><i class="bi bi-people-fill"></i></div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="stat-card">
+                <div>
+                  <div class="stat-value text-success" id="qa-avg-score">0%</div>
+                  <div class="stat-label">Average Score</div>
+                </div>
+                <div class="stat-icon text-success bg-success-subtle"><i class="bi bi-graph-up-arrow"></i></div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="stat-card">
+                <div>
+                  <div class="stat-value text-info" id="qa-highest-score">0 / 0</div>
+                  <div class="stat-label">Highest Score</div>
+                </div>
+                <div class="stat-icon text-info bg-info-subtle"><i class="bi bi-trophy"></i></div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="stat-card">
+                <div>
+                  <div class="stat-value text-warning" id="qa-pass-rate">0%</div>
+                  <div class="stat-label">Pass Rate (&gt;= 50%)</div>
+                </div>
+                <div class="stat-icon text-warning bg-warning-subtle"><i class="bi bi-award"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter bar -->
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-list-check me-1 text-primary"></i> Candidate Exam Submissions</h6>
+            <div class="d-flex gap-2" style="max-width: 340px; width: 100%;">
+              <input type="text" class="form-control form-control-sm" id="qa-filter-input" placeholder="Search by student name, email, pass/fail..." oninput="filterQuizAttempts(this.value)">
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="table-responsive border rounded">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 70px;">Attempt #</th>
+                  <th>Candidate Profile</th>
+                  <th>Score Obtained</th>
+                  <th>Percentage</th>
+                  <th>Result Status</th>
+                  <th>Time Taken</th>
+                  <th>Submitted Date & Time</th>
+                  <th class="text-end">Full Review</th>
+                </tr>
+              </thead>
+              <tbody id="quiz-attempts-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>

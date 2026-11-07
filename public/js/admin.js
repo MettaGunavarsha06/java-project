@@ -14,13 +14,120 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  await loadDashboardStats();
-  await loadQuizzesTable();
-  await loadStudentsTable();
-  await loadAttemptsTable();
+  try { await loadDashboardStats(); } catch (e) { console.error('Error in stats:', e); }
+  try { await loadQuizzesTable(); } catch (e) { console.error('Error in quizzes:', e); }
+  try { await loadStudentsTable(); } catch (e) { console.error('Error in students:', e); }
+  try { await loadAttemptsTable(); } catch (e) { console.error('Error in attempts:', e); }
 });
 
-async function loadDashboardStats() {
+function getQuizScheduleBadge(q) {
+  if (!q.scheduleType || q.scheduleType === 'ALWAYS_AVAILABLE') {
+    return '<span class="badge bg-light text-success border border-success-subtle px-2 py-1"><i class="bi bi-unlock-fill me-1"></i> Always Open</span>';
+  }
+  const now = Date.now();
+  const start = q.scheduledStartTime ? new Date(q.scheduledStartTime).getTime() : null;
+  const end = q.scheduledEndTime ? new Date(q.scheduledEndTime).getTime() : null;
+
+  if (start && now < start) {
+    const startStr = new Date(start).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return `<div class="d-inline-flex flex-column align-items-start">
+      <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="bi bi-calendar-event me-1"></i> Upcoming</span>
+      <span class="small text-muted" style="font-size:0.75rem;">Opens: ${startStr}</span>
+    </div>`;
+  }
+  if (end && now > end) {
+    const endStr = new Date(end).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return `<div class="d-inline-flex flex-column align-items-start">
+      <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1"><i class="bi bi-clock-history me-1"></i> Closed</span>
+      <span class="small text-muted" style="font-size:0.75rem;">Ended: ${endStr}</span>
+    </div>`;
+  }
+  let endStr = end ? 'Until ' + new Date(end).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  return `<div class="d-inline-flex flex-column align-items-start">
+    <span class="badge bg-success px-2 py-1"><i class="bi bi-broadcast me-1"></i> Live Now</span>
+    ${endStr ? `<span class="small text-muted" style="font-size:0.75rem;">${endStr}</span>` : ''}
+  </div>`;
+}
+
+function toggleScheduleFields(checked) {
+  const fields = document.getElementById('quiz-schedule-fields');
+  const indicator = document.getElementById('schedule-status-indicator');
+  if (!fields) return;
+  if (checked) {
+    fields.classList.remove('d-none');
+    if (indicator) indicator.innerText = 'Scheduled Window';
+  } else {
+    fields.classList.add('d-none');
+    if (indicator) indicator.innerText = 'Always Available';
+  }
+}
+
+// ---------------- QUIZ MANAGEMENT ----------------
+
+async function loadQuizzesTable() {
+  const quizzes = await QuizStore.getMergedQuizzes();
+  const tbody = document.getElementById('admin-quizzes-tbody');
+  if (!tbody) return;
+
+  if (!quizzes || quizzes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No quizzes available. Click "Add Quiz" above.</td></tr>';
+    return;
+  }
+
+  // Fetch attempts to calculate submissions per quiz
+  let allAttempts = [];
+  try {
+    const attRes = await apiRequest('/admin/attempts');
+    if (attRes && attRes.success && Array.isArray(attRes.data)) {
+      allAttempts = attRes.data;
+    }
+  } catch (e) {}
+
+  tbody.innerHTML = quizzes.map(q => {
+    const attCount = q.attemptCount !== undefined ? q.attemptCount : allAttempts.filter(a => a.quizId === q.id).length;
+    return `
+      <tr>
+        <td class="fw-bold">#${q.id}</td>
+        <td>
+          <a href="javascript:void(0)" onclick="viewQuizAttempts(${q.id}, '${escapeHtml(q.title)}')" class="fw-bold text-primary text-decoration-none d-inline-flex align-items-center gap-1" title="Click to view all student attempts and results for this exam">
+            <span>${escapeHtml(q.title)}</span>
+            <i class="bi bi-box-arrow-up-right small text-muted" style="font-size:0.75rem;"></i>
+          </a>
+          <div class="small text-muted text-truncate" style="max-width: 260px;">${escapeHtml(q.description)}</div>
+        </td>
+        <td>${getQuizScheduleBadge(q)}</td>
+        <td><span class="badge bg-light text-dark border">${q.duration} Mins</span></td>
+        <td><span class="badge bg-primary">${q.totalMarks} Marks</span></td>
+        <td><span class="badge bg-info text-dark">${q.questionCount || (q.questions ? q.questions.length : 0)} Questions</span></td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" onclick="viewQuizAttempts(${q.id}, '${escapeHtml(q.title)}')" title="Click to view candidate attempts and results for this exam">
+            <i class="bi bi-people me-1"></i><strong>${attCount}</strong> Submissions
+          </button>
+        </td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary me-1" title="View Attempts & Results" onclick="viewQuizAttempts(${q.id}, '${escapeHtml(q.title)}')">
+            <i class="bi bi-bar-chart-line me-1"></i> Results
+          </button>
+          <button class="btn btn-sm btn-outline-info me-1" title="Share Quiz Link & QR Code" onclick="openShareQuizModal(${q.id}, '${escapeHtml(q.title)}', false)">
+            <i class="bi bi-qr-code me-1"></i> Share
+          </button>
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="manageQuestions(${q.id}, '${escapeHtml(q.title)}')" title="Manage Question Bank">
+            <i class="bi bi-list-check me-1"></i> Questions
+          </button>
+          <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditQuizModal(${q.id})" title="Edit Quiz Settings">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteQuiz(${q.id})" title="Delete Quiz">
+            <i class="bi bi-trash"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-success" title="Export Report" onclick="exportQuizReport(${q.id})">
+            <i class="bi bi-file-earmark-arrow-down"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
   const res = await apiRequest('/admin/stats');
   if (!res.success || !res.data) return;
 
@@ -125,6 +232,15 @@ function openCreateQuizModal() {
   document.getElementById('quiz-id-field').value = '';
   const qCountInput = document.getElementById('quiz-questions-count-input');
   if (qCountInput) qCountInput.value = '10';
+
+  const schedToggle = document.getElementById('quiz-schedule-toggle');
+  if (schedToggle) {
+    schedToggle.checked = false;
+    toggleScheduleFields(false);
+    document.getElementById('quiz-start-time-input').value = '';
+    document.getElementById('quiz-end-time-input').value = '';
+  }
+
   const modal = new bootstrap.Modal(document.getElementById('quizModal'));
   modal.show();
 }
@@ -162,6 +278,20 @@ async function openEditQuizModal(id) {
     }
   }
 
+  const schedToggle = document.getElementById('quiz-schedule-toggle');
+  if (schedToggle) {
+    const isSched = q.scheduleType === 'SCHEDULED' || !!q.scheduledStartTime;
+    schedToggle.checked = isSched;
+    toggleScheduleFields(isSched);
+    if (isSched) {
+      document.getElementById('quiz-start-time-input').value = q.scheduledStartTime ? q.scheduledStartTime.substring(0, 16) : '';
+      document.getElementById('quiz-end-time-input').value = q.scheduledEndTime ? q.scheduledEndTime.substring(0, 16) : '';
+    } else {
+      document.getElementById('quiz-start-time-input').value = '';
+      document.getElementById('quiz-end-time-input').value = '';
+    }
+  }
+
   const modal = new bootstrap.Modal(document.getElementById('quizModal'));
   modal.show();
 }
@@ -174,23 +304,39 @@ async function saveQuiz() {
   const totalMarks = parseInt(document.getElementById('quiz-marks-input').value);
   const questionCount = parseInt(document.getElementById('quiz-questions-count-input')?.value) || 10;
 
+  const isScheduled = document.getElementById('quiz-schedule-toggle')?.checked || false;
+  const scheduledStartTime = isScheduled ? (document.getElementById('quiz-start-time-input')?.value || null) : null;
+  const scheduledEndTime = isScheduled ? (document.getElementById('quiz-end-time-input')?.value || null) : null;
+  const scheduleType = isScheduled ? 'SCHEDULED' : 'ALWAYS_AVAILABLE';
+
   if (!title) {
     alert('Please enter a quiz title');
     return;
   }
+
+  const payload = {
+    title,
+    description,
+    duration,
+    totalMarks,
+    questionCount,
+    scheduleType,
+    scheduledStartTime,
+    scheduledEndTime
+  };
 
   let res;
   if (id) {
     // Update
     res = await apiRequest(`/admin/quizzes/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ title, description, duration, totalMarks, questionCount })
+      body: JSON.stringify(payload)
     });
   } else {
     // Create
     res = await apiRequest('/admin/quizzes', {
       method: 'POST',
-      body: JSON.stringify({ title, description, duration, totalMarks, questionCount })
+      body: JSON.stringify(payload)
     });
   }
 
@@ -526,7 +672,7 @@ async function loadStudentsTable(keyword = '') {
 
   cachedCandidatesList = students;
 
-  tbody.innerHTML = res.data.map(s => `
+  tbody.innerHTML = students.map(s => `
     <tr>
       <td class="fw-bold">#${s.id}</td>
       <td>
@@ -646,34 +792,167 @@ function handleStudentSearch(input) {
 // ---------------- ATTEMPTS AUDIT ----------------
 
 async function loadAttemptsTable() {
-  const res = await apiRequest('/admin/attempts');
   const tbody = document.getElementById('admin-attempts-tbody');
   if (!tbody) return;
 
-  if (!res.success || !res.data || res.data.length === 0) {
+  let attemptsList = [];
+  try {
+    const res = await apiRequest('/admin/attempts');
+    if (res && res.success && Array.isArray(res.data)) {
+      attemptsList = res.data;
+    }
+  } catch (err) {
+    console.warn('Failed to load attempts', err);
+  }
+
+  if (attemptsList.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No quiz attempts recorded yet.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = res.data.map(a => {
+  tbody.innerHTML = attemptsList.map(a => {
     const isPass = a.percentage >= 50;
     const badgeClass = isPass ? 'bg-success' : 'bg-danger';
     return `
       <tr>
         <td class="fw-bold">#${a.id}</td>
-        <td>${escapeHtml(a.studentName)} <span class="text-muted small">(${escapeHtml(a.studentEmail)})</span></td>
-        <td>${escapeHtml(a.quizTitle)}</td>
-        <td class="fw-bold">${a.score} / ${a.totalMarks || 50}</td>
-        <td><span class="badge ${badgeClass}">${a.percentage.toFixed(1)}% (${isPass ? 'PASS' : 'FAIL'})</span></td>
-        <td class="small text-muted">${a.attemptDate || 'N/A'}</td>
         <td>
-          <a href="result-view.html?attemptId=${a.id}" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-eye"></i> View
+          <div class="fw-bold text-dark">${escapeHtml(a.studentName || 'Candidate')}</div>
+          <div class="small text-muted">${escapeHtml(a.studentEmail || '')}</div>
+        </td>
+        <td>
+          <a href="javascript:void(0)" onclick="viewQuizAttempts(${a.quizId || 1}, '${escapeHtml(a.quizTitle || 'Quiz')}')" class="fw-semibold text-primary text-decoration-none" title="Click to view all results for this quiz">
+            ${escapeHtml(a.quizTitle || 'Assessment')}
+          </a>
+        </td>
+        <td class="fw-bold">${a.score} / ${a.totalMarks || 50}</td>
+        <td><span class="badge ${badgeClass}">${(a.percentage || 0).toFixed(1)}% (${isPass ? 'PASS' : 'FAIL'})</span></td>
+        <td class="small text-muted">${a.attemptDate || 'N/A'}</td>
+        <td class="text-end">
+          <a href="result-view.html?attemptId=${a.id}" class="btn btn-sm btn-outline-primary" target="_blank" title="View Full Review">
+            <i class="bi bi-eye me-1"></i> Review
           </a>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+// ---------------- INDIVIDUAL QUIZ ATTEMPTS & RESULTS ----------------
+let currentQuizAttemptsList = [];
+let activeQuizFilterTitle = '';
+
+async function viewQuizAttempts(quizId, quizTitle) {
+  activeQuizFilterTitle = quizTitle;
+  const titleEl = document.getElementById('quizAttemptsModalTitle');
+  const subEl = document.getElementById('quizAttemptsModalSubtitle');
+  if (titleEl) titleEl.innerText = `${quizTitle} (Quiz #${quizId})`;
+  if (subEl) subEl.innerText = `Detailed student attempts, grades, accuracy, and evaluation breakdown for Quiz #${quizId}`;
+
+  const tbody = document.getElementById('quiz-attempts-tbody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading exam submissions...</td></tr>';
+  }
+
+  const modalEl = document.getElementById('quizAttemptsModal');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+
+  let attemptsList = [];
+  try {
+    const res = await apiRequest(`/admin/attempts?quizId=${quizId}`);
+    if (res && res.success && Array.isArray(res.data)) {
+      attemptsList = res.data;
+    }
+  } catch (err) {
+    console.warn('Failed to load quiz attempts from server', err);
+  }
+
+  // Fallback to local filtering if server returned empty
+  if (attemptsList.length === 0) {
+    try {
+      const allRes = await apiRequest('/admin/attempts');
+      if (allRes && allRes.success && Array.isArray(allRes.data)) {
+        attemptsList = allRes.data.filter(a => a.quizId === parseInt(quizId));
+      }
+    } catch (e) {}
+  }
+
+  currentQuizAttemptsList = attemptsList;
+  renderQuizAttemptsModalData(attemptsList);
+}
+
+function renderQuizAttemptsModalData(list) {
+  const tbody = document.getElementById('quiz-attempts-tbody');
+  const countBadge = document.getElementById('quizAttemptsModalBadge');
+  if (countBadge) countBadge.innerText = `${list.length} Submissions`;
+
+  // Summary Metrics
+  const total = list.length;
+  const passed = list.filter(a => a.percentage >= 50).length;
+  const avgScore = total > 0 ? Math.round(list.reduce((acc, a) => acc + (a.percentage || 0), 0) / total) : 0;
+  const highest = total > 0 ? Math.max(...list.map(a => a.score || 0)) : 0;
+  const maxMarks = total > 0 ? (list[0].totalMarks || 50) : 50;
+  const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+  const totalEl = document.getElementById('qa-total-attempts');
+  const avgEl = document.getElementById('qa-avg-score');
+  const highEl = document.getElementById('qa-highest-score');
+  const passEl = document.getElementById('qa-pass-rate');
+
+  if (totalEl) totalEl.innerText = total;
+  if (avgEl) avgEl.innerText = avgScore + '%';
+  if (highEl) highEl.innerText = `${highest} / ${maxMarks}`;
+  if (passEl) passEl.innerText = passRate + '%';
+
+  if (!tbody) return;
+
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>No student attempts have been submitted yet for this examination.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map((a, idx) => {
+    const isPass = a.percentage >= 50;
+    const badgeClass = isPass ? 'bg-success' : 'bg-danger';
+    const timeDisplay = a.timeTakenSeconds ? (a.timeTakenSeconds < 60 ? `${a.timeTakenSeconds}s` : `${Math.floor(a.timeTakenSeconds / 60)}m ${a.timeTakenSeconds % 60}s`) : 'N/A';
+    return `
+      <tr>
+        <td class="fw-bold">#${a.id || (idx + 1)}</td>
+        <td>
+          <div class="fw-bold text-dark">${escapeHtml(a.studentName || 'Student Candidate')}</div>
+          <div class="small text-muted"><i class="bi bi-envelope me-1"></i>${escapeHtml(a.studentEmail || 'N/A')}</div>
+        </td>
+        <td><span class="fw-bold text-dark fs-6">${a.score}</span> <span class="text-muted small">/ ${a.totalMarks || 50}</span></td>
+        <td><span class="badge ${badgeClass}">${(a.percentage || 0).toFixed(1)}%</span></td>
+        <td><span class="badge ${isPass ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}">${isPass ? 'PASSED' : 'FAILED'}</span></td>
+        <td><span class="badge bg-light text-dark border"><i class="bi bi-stopwatch me-1 text-primary"></i>${timeDisplay}</span></td>
+        <td class="small text-muted">${a.attemptDate || 'Recent'}</td>
+        <td class="text-end">
+          <a href="result-view.html?attemptId=${a.id}" target="_blank" class="btn btn-sm btn-outline-primary" title="View Detailed Question by Question Evaluation">
+            <i class="bi bi-eye me-1"></i> Review
+          </a>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterQuizAttempts(keyword) {
+  if (!keyword || !keyword.trim()) {
+    renderQuizAttemptsModalData(currentQuizAttemptsList);
+    return;
+  }
+  const term = keyword.trim().toLowerCase();
+  const filtered = currentQuizAttemptsList.filter(a =>
+    (a.studentName && a.studentName.toLowerCase().includes(term)) ||
+    (a.studentEmail && a.studentEmail.toLowerCase().includes(term)) ||
+    (a.percentage >= 50 && term.includes('pass')) ||
+    (a.percentage < 50 && term.includes('fail'))
+  );
+  renderQuizAttemptsModalData(filtered);
 }
 
 // ---------------- SHARE & QR CODE FUNCTIONS ----------------
@@ -701,7 +980,10 @@ function openShareQuizModal(quizId, quizTitle, isJustCreated = false) {
   const dur = qObj.duration || 10;
   const marks = qObj.totalMarks || 50;
   const qc = qObj.questionCount || (qObj.questions ? qObj.questions.length : 10);
-  const quizUrl = `${origin}/quiz-view.html?id=${quizId}&title=${encodeURIComponent(quizTitle)}&dur=${dur}&marks=${marks}&qc=${qc}`;
+  const schedParams = (qObj.scheduleType === 'SCHEDULED' && qObj.scheduledStartTime)
+    ? `&st=${encodeURIComponent(qObj.scheduledStartTime)}${qObj.scheduledEndTime ? '&et=' + encodeURIComponent(qObj.scheduledEndTime) : ''}`
+    : '';
+  const quizUrl = `${origin}/quiz-view.html?id=${quizId}&title=${encodeURIComponent(quizTitle)}&dur=${dur}&marks=${marks}&qc=${qc}${schedParams}`;
   document.getElementById('share-quiz-url-input').value = quizUrl;
   document.getElementById('share-direct-open-btn').href = quizUrl;
 
