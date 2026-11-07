@@ -128,6 +128,10 @@ async function loadQuizzesTable() {
     `;
   }).join('');
 }
+
+// ---------------- DASHBOARD STATS ----------------
+
+async function loadDashboardStats() {
   const res = await apiRequest('/admin/stats');
   if (!res.success || !res.data) return;
 
