@@ -96,33 +96,32 @@ async function loadQuizzesTable() {
           <div class="small text-muted text-truncate" style="max-width: 260px;">${escapeHtml(q.description)}</div>
         </td>
         <td>${getQuizScheduleBadge(q)}</td>
-        <td><span class="badge bg-light text-dark border">${q.duration} Mins</span></td>
-        <td><span class="badge bg-primary">${q.totalMarks} Marks</span></td>
-        <td><span class="badge bg-info text-dark">${q.questionCount || (q.questions ? q.questions.length : 0)} Questions</span></td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary" onclick="viewQuizAttempts(${q.id}, '${escapeHtml(q.title)}')" title="Click to view candidate attempts and results for this exam">
-            <i class="bi bi-people me-1"></i><strong>${attCount}</strong> Submissions
+        <td class="text-center text-nowrap"><span class="badge bg-light text-dark border px-2 py-1"><i class="bi bi-clock me-1 text-primary"></i>${q.duration} Mins</span></td>
+        <td class="text-center text-nowrap"><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-award me-1"></i>${q.totalMarks} Marks</span></td>
+        <td class="text-center text-nowrap"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"><i class="bi bi-question-circle me-1"></i>${q.questionCount || (q.questions ? q.questions.length : 0)} Qs</span></td>
+        <td class="text-center text-nowrap">
+          <button class="btn btn-sm ${attCount > 0 ? 'btn-primary' : 'btn-outline-primary'} px-2 py-1 d-inline-flex align-items-center gap-1" onclick="viewQuizAttempts(${q.id}, '${escapeHtml(q.title)}')" title="Click to view candidate attempts and results for this exam">
+            <i class="bi bi-bar-chart-line-fill"></i><span><strong>${attCount}</strong> Submissions</span>
           </button>
         </td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary me-1" title="View Attempts & Results" onclick="viewQuizAttempts(${q.id}, '${escapeHtml(q.title)}')">
-            <i class="bi bi-bar-chart-line me-1"></i> Results
-          </button>
-          <button class="btn btn-sm btn-outline-info me-1" title="Share Quiz Link & QR Code" onclick="openShareQuizModal(${q.id}, '${escapeHtml(q.title)}', false)">
-            <i class="bi bi-qr-code me-1"></i> Share
-          </button>
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="manageQuestions(${q.id}, '${escapeHtml(q.title)}')" title="Manage Question Bank">
-            <i class="bi bi-list-check me-1"></i> Questions
-          </button>
-          <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditQuizModal(${q.id})" title="Edit Quiz Settings">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteQuiz(${q.id})" title="Delete Quiz">
-            <i class="bi bi-trash"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-success" title="Export Report" onclick="exportQuizReport(${q.id})">
-            <i class="bi bi-file-earmark-arrow-down"></i>
-          </button>
+        <td class="text-end text-nowrap">
+          <div class="d-inline-flex align-items-center justify-content-end gap-1">
+            <button class="btn btn-sm btn-outline-info" title="Share Quiz Link & QR Code" onclick="openShareQuizModal(${q.id}, '${escapeHtml(q.title)}', false)">
+              <i class="bi bi-qr-code me-1"></i>Share
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="manageQuestions(${q.id}, '${escapeHtml(q.title)}')" title="Manage Question Bank">
+              <i class="bi bi-list-check me-1"></i>Questions
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="openEditQuizModal(${q.id})" title="Edit Quiz Settings">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteQuiz(${q.id})" title="Delete Quiz">
+              <i class="bi bi-trash"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-success" title="Export Report" onclick="exportQuizReport(${q.id})">
+              <i class="bi bi-file-earmark-arrow-down"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
